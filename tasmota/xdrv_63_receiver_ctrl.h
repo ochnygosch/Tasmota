@@ -1,0 +1,8 @@
+#ifndef _XDRV63_RECEIVER_CTRL_H_
+#define -XDRV63_RECEIVER_CTRL_H_
+
+#ifndef RECEIVER_CTRL_BAUD_RATE
+#define RECEIVER_CTRL_BAUD_RATE 9600
+#endif
+
+#endif
