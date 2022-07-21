@@ -185,6 +185,8 @@ const be_const_member_t lv_gpio_constants[] = {
     { "RC522_CS", (int32_t) GPIO_RC522_CS },
     { "RC522_RST", (int32_t) GPIO_RC522_RST },
     { "RDM6300_RX", (int32_t) GPIO_RDM6300_RX },
+    { "RECEIVER_CTRL_RX", (int32_t) GPIO_RECEIVER_CTRL_RX },
+    { "RECEIVER_CTRL_TX", (int32_t) GPIO_RECEIVER_CTRL_TX },
     { "REL1", (int32_t) GPIO_REL1 },
     { "REL1_INV", (int32_t) GPIO_REL1_INV },
     { "RESET", (int32_t) GPIO_RESET },
