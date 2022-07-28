@@ -1,6 +1,6 @@
 #ifdef USE_RECEIVER_CTRL
 
-#define XDRV_63     63
+#define XDRV_64   64
 
 #if !defined(USE_RECEIVER_CTRL_MODEL_YAMAHA_2500)
 #define USE_RECEIVER_CTRL_MODEL_YAMAHA_2500
@@ -8,8 +8,9 @@
 
 #ifdef USE_RECEIVER_CTRL_MODEL_YAMAHA_2500
 #define RECEIVER_CTRL_SERIAL_BAUDRATE 9600
-#define PROJECTOR_CTRL_LOGNAME	"RCV[Y2500]"
+#define RECEIVER_CTRL_LOGNAME	"RCV[Y2500]"
 #endif
+
 
 enum receiver_ctrl_serial_state_e : uint8_t {
     RECEIVER_CTRL_SERIAL_NOT_INIT=0,
@@ -19,16 +20,17 @@ enum receiver_ctrl_serial_state_e : uint8_t {
 };
 
 struct receiver_ctrl_softc_s {
-    TasmotaSerial   *sc_serial,
+    TasmotaSerial   *sc_serial;
     enum receiver_ctrl_serial_state_e   sc_serial_state;
-    uint8_t init_retries,
-    uint16_t timeout_to_do
+    uint8_t init_retries;
+    uint16_t timeout_to_do;
 } __packed;
+
 
 static struct receiver_ctrl_softc_s *receiver_ctrl_sc = nullptr;
 
 
-static void rreceiver_ctrl_pre_init(void) {
+static void receiver_ctrl_pre_init(void) {
     struct receiver_ctrl_softc_s *sc;
     int baudrate = RECEIVER_CTRL_SERIAL_BAUDRATE;
 
@@ -51,7 +53,7 @@ static void rreceiver_ctrl_pre_init(void) {
         goto del;
     }
 
-    if (sc->sc_serial_>hardwareSerial()) {
+    if (sc->sc_serial->hardwareSerial()) {
         ClaimSerial();
         SetSerial(baudrate, TS_SERIAL_8N1);
     }
@@ -123,13 +125,13 @@ static void handle_timeout(void) {
     return;
 }
 
-static void receiver_ctrl_loop(receiver_ctrl_soft_c *sc) {
-    
+static void receiver_ctrl_loop(struct receiver_ctrl_softc_s *sc) {
+    return;
 }
 
-bool Xdrv63(uint8_t function) {
+bool Xdrv64(uint8_t function) {
 
-    struct receiver_ctrl_soft_c *sc;
+    struct receiver_ctrl_softc_s *sc;
 
     sc = receiver_ctrl_sc;
 
