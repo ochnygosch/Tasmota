@@ -21,6 +21,31 @@ enum receiver_ctrl_serial_state_e : uint8_t {
     RECEIVER_CTRL_SERIAL_TIMEOUT
 };
 
+enum receiver_ctrl_system_state_e : uint8_t {
+    RECEIVER_CTRL_SYSTEM_STATE_OK=0,
+    RECEIVER_CTRL_SYSTEM_STATE_BUSY,
+    RECEIVER_CTRL_SYSTEM_STATE_STANDBY
+};
+
+enum receiver_ctrl_system_input_e: uint8_t {
+    RECEIVER_CTRL_SYSTEM_INPUT_PHONO=0,
+    RECEIVER_CTRL_SYSTEM_INPUT_CD,
+    RECEIVER_CTRL_SYSTEM_INPUT_TUNER,
+    RECEIVER_CTRL_SYSTEM_INPUT_CDR,
+    RECEIVER_CTRL_SYSTEM_INPUT_MD_TAPE,
+    RECEIVER_CTRL_SYSTEM_INPUT_DVD,
+    RECEIVER_CTRL_SYSTEM_INPUT_DTV,
+    RECEIVER_CTRL_SYSTEM_INPUT_CBL_SAT,
+    RECEIVER_CTRL_SYSTEM_INPUT_SAT,
+    RECEIVER_CTRL_SYSTEM_INPUT_VCR1,
+    RECEIVER_CTRL_SYSTEM_INPUT_DVR_VCR2,
+    RECEIVER_CTRL_SYSTEM_INPUT_DVR_VCR3,
+    RECEIVER_CTRL_SYSTEM_INPUT_VAUX_DOCK,
+    RECEIVER_CTRL_SYSTEM_INPUT_NET_USB,
+    RECEIVER_CTRL_SYSTEM_INPUT_XM,
+    RECEIVER_CTRL_SYSTEM_INPUT_MULTI_CH,
+};
+
 struct receiver_ctrl_softc_s {
     TasmotaSerial   *sc_serial;
     enum receiver_ctrl_serial_state_e   sc_serial_state;
@@ -28,6 +53,14 @@ struct receiver_ctrl_softc_s {
     uint16_t timeout_to_do;
     LinkedList<uint8_t> current_data;
     unsigned long last_packet;
+
+    char model[6];
+    char version;
+    enum receiver_ctrl_system_state_e system_state;
+    bool power_main;
+    bool power_zone_2;
+    bool power_zone_3;
+    enum receiver_ctrl_system_input_e input_main;
 } __packed;
 
 
@@ -233,16 +266,31 @@ static void parseConfiguration() {
         return ;
     }
 
+    receiver_ctrl_softc_s *r = receiver_ctrl_sc;
+
     char typ[5];
 
-    typ[0] = receiver_ctrl_sc->current_data.shift();
-    typ[1] = receiver_ctrl_sc->current_data.shift();
-    typ[2] = receiver_ctrl_sc->current_data.shift();
-    typ[3] = receiver_ctrl_sc->current_data.shift();
-    typ[4] = receiver_ctrl_sc->current_data.shift();
+    r->model[0] = r->current_data.shift();
+    r->model[1] = r->current_data.shift();
+    r->model[2] = r->current_data.shift();
+    r->model[3] = r->current_data.shift();
+    r->model[4] = r->current_data.shift();
+    r->model[5] = 0;
 
-    AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Got type"));
-    AddLog(LOG_LEVEL_INFO, typ);
+    r->version = r->current_data.shift();
+
+    AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Got type %s"), r->model);
+
+    uint32_t length = ascii_to_num(&(r->current_data),0,2);
+
+    char len[3];
+    len[0] = r->current_data.shift();
+    len[1] = r->current_data.shift();
+    len[2] = 0;
+
+    AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Got length %d from %s"), length, len);
+
+
 }
 
 static void parseReport() {
