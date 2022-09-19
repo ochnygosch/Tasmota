@@ -219,7 +219,19 @@ void TasDiscoverMessage(void) {
     ResponseAppend_P(PSTR("%s[0,0,0]"), (i > 0 ? "," : ""));
 #endif  // USE_SHUTTER
   }
-  ResponseAppend_P(PSTR("],"                                   // Shutter Tilt (end)
+  ResponseAppend_P(PSTR("],"
+    "\"rcv\":"));
+
+#ifdef USE_RECEIVER_CTRL
+  #ifdef USE_RECEIVER_CTRL_MODEL_YAMAHA_2500
+  ResponseAppend_P(PSTR("1"));
+  #else
+  ResponseAppend_P(PSTR("-1"));
+  #endif
+#else
+  ResponseAppend_P(PSTR("0"));
+#endif
+  ResponseAppend_P(PSTR(","                                   // Shutter Tilt (end)
                         "\"ver\":1}"));                        // Discovery version
 }
 
