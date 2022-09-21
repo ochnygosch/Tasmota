@@ -66,7 +66,7 @@ struct receiver_ctrl_softc_s {
 
 static struct receiver_ctrl_softc_s *receiver_ctrl_sc = nullptr;
 
-static void receiver_ctrl_update_mqtt(receiver_ctrl_softc_s *sc);
+static void receiver_ctrl_update_mqtt(receiver_ctrl_softc_s *sc,bool send);
 static void send_system_command(receiver_ctrl_softc_s *sc,uint8_t cmd0, uint8_t cmd1, uint8_t dat0, uint8_t dat1);
 static void send_operation_command(receiver_ctrl_softc_s *sc,uint8_t cmd0, uint8_t cmd1, uint8_t cmd2, uint8_t cmd3);
 
@@ -183,7 +183,7 @@ static void receiver_ctrl_do_init(void) {
         AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Config max retries reached"));
         receiver_ctrl_sc->sc_serial_state = RECEIVER_CTRL_SERIAL_TIMEOUT;
         receiver_ctrl_sc->timeout_to_do = 10;
-        receiver_ctrl_update_mqtt(receiver_ctrl_sc);
+        receiver_ctrl_update_mqtt(receiver_ctrl_sc, true);
         return;
     }
 
@@ -532,12 +532,12 @@ static bool parsePaket() {
                     receiver_ctrl_sc->last_packet = millis();
                     AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Got parseConfig return"));
                     //MqttShowSensor(false);
-                    receiver_ctrl_update_mqtt(receiver_ctrl_sc);
+                    receiver_ctrl_update_mqtt(receiver_ctrl_sc, true);
                     break;
                 case 0x02:
                     parseReport();
                     receiver_ctrl_sc->last_packet = millis();
-                    receiver_ctrl_update_mqtt(receiver_ctrl_sc);
+                    receiver_ctrl_update_mqtt(receiver_ctrl_sc, true);
                     //MqttShowSensor(false);
                     break;
             }
@@ -566,7 +566,7 @@ void ReceiverJsonShow() {
     }
 }
 
-static void receiver_ctrl_update_mqtt(receiver_ctrl_softc_s *sc) {
+static void receiver_ctrl_update_mqtt(receiver_ctrl_softc_s *sc,bool send) {
     Response_P(PSTR("{\"RCV\":{"));
     ResponseAppend_P(PSTR("\"SerialState\": %d"), sc->sc_serial_state);
     if (sc->sc_serial_state == RECEIVER_CTRL_SERIAL_INIT) {
@@ -579,7 +579,9 @@ static void receiver_ctrl_update_mqtt(receiver_ctrl_softc_s *sc) {
     }
     ResponseJsonEnd();
     ResponseJsonEnd();
-    MqttPublishPrefixTopicRulesProcess_P(RESULT_OR_STAT, PSTR("RCV"));
+    if (send) {
+        MqttPublishPrefixTopicRulesProcess_P(RESULT_OR_STAT, PSTR("RCV"));
+    }
 }
 
 
@@ -603,13 +605,45 @@ bool receiver_ctrl_command(void) {
 
     if (!strcmp(ArgV(argument, 1), "STATUS")) {
         AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Got status command"));
-        receiver_ctrl_update_mqtt(receiver_ctrl_sc);
+        receiver_ctrl_update_mqtt(receiver_ctrl_sc, false);
         return serviced;
     }
 
     if (!strcmp(ArgV(argument,1), "POWER")) {
-        AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Got power command"));
-        send_operation_command(receiver_ctrl_sc, 0x7, 0xA, 0x1, 0xE);
+        if (paramcount > 2) {
+            if (!strcmp(ArgV(argument, 2), "1")) {
+                if (!strcmp(ArgV(argument, 3), "ON")) {
+                    AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Got main power on command"));
+                } else {
+                    AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Got main power off command"));
+                }
+            } else if (!strcmp(ArgV(argument, 2), "2")) {
+                if (!strcmp(ArgV(argument, 3), "ON")) {
+                    AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Got zone 2 power on command"));
+                } else {
+                    AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Got zone 2 power off command"));
+                }
+            } else if (!strcmp(ArgV(argument, 2), "3")) {
+                if (!strcmp(ArgV(argument, 3), "ON")) {
+                    AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Got zone 3 power on command"));
+                } else {
+                    AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Got zone 3 power off command"));   
+                }
+            } else {
+                AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Got unknown power command"));
+            }
+            
+            //send_operation_command(receiver_ctrl_sc, 0x7, 0xA, 0x1, 0xE);
+        } else if (paramcount > 1) {
+            if (!strcmp(ArgV(argument, 2), "ON")) {
+                AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Got power on ALL command"));
+                send_operation_command(receiver_ctrl_sc, 0x7, 0xA, 0x1, 0xE);
+            } else {
+                AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Got power off ALL command"));
+                send_operation_command(receiver_ctrl_sc, 0x7, 0xA, 0x1, 0xD);
+            }
+        }
+        receiver_ctrl_update_mqtt(receiver_ctrl_sc, false);
         return serviced;
     }
 
