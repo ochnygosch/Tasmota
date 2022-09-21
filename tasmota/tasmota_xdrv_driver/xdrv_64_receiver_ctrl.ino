@@ -1,7 +1,6 @@
 #ifdef USE_RECEIVER_CTRL
 
 #include <LinkedList.h>
-#include <QList.h>
 
 #define XDRV_64   64
 
@@ -68,14 +67,27 @@ struct receiver_ctrl_softc_s {
 static struct receiver_ctrl_softc_s *receiver_ctrl_sc = nullptr;
 
 static void receiver_ctrl_update_mqtt(receiver_ctrl_softc_s *sc);
+static void send_system_command(receiver_ctrl_softc_s *sc,uint8_t cmd0, uint8_t cmd1, uint8_t dat0, uint8_t dat1);
 
-static int8_t char_to_num(uint8_t c) {
+static uint8_t char_to_num(uint8_t c) {
     if (c >= 0x30 && c <= 0x39) {
         return c - 0x30;
     }
 
     if (c >= 0x41 && c <= 0x46) {
         return c - 55;
+    }
+
+    return 0;
+}
+
+static uint8_t num_to_char(uint8_t n) {
+    if (n < 10) {
+        return n + 0x30;
+    }
+
+    if (n > 9 && n < 16) {
+        return n - 10 + 0x41;
     }
 
     return 0;
@@ -210,6 +222,19 @@ static void send_init_command(void) {
     receiver_ctrl_sc->sc_serial_state = RECEIVER_CTRL_SERIAL_WAITING_FOR_CONFIG;
 }
 
+static void send_system_command(receiver_ctrl_softc_s *sc,uint8_t cmd0, uint8_t cmd1, uint8_t dat0, uint8_t dat1) {
+    sc->sc_serial->write(0x02);
+    sc->sc_serial->write(0x32);
+    sc->sc_serial->write(num_to_char(cmd0));
+    sc->sc_serial->write(num_to_char(cmd1));
+    sc->sc_serial->write(num_to_char(dat0));
+    sc->sc_serial->write(num_to_char(dat1));
+    sc->sc_serial->write(0x03);
+    sc->sc_serial->flush();
+}
+
+
+
 static void handle_timeout(void) {
 
     if (receiver_ctrl_sc == nullptr) {
@@ -298,17 +323,105 @@ static void parseConfiguration() {
 
     AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Got length %d from %s"), length, len);
 
+    int currDt = -1;
+
+    if (length > 6) {
+        currDt++;
+        r->current_data->shift(); // DT0 Fixed Baud Rate
+        currDt++;
+        r->current_data->shift(); // DT1 Fixed Receive Buffer
+        currDt++;
+        r->current_data->shift(); // DT2 Fixed Receive Buffer
+        currDt++;
+        r->current_data->shift(); // DT3 Fixed Command Timeout
+        currDt++;
+        r->current_data->shift(); // DT4 Fixed Command Timeout
+        currDt++;
+        r->current_data->shift(); // DT5 Fixed Command Timeout
+        currDt++;
+        r->current_data->shift(); // DT6 Fixed Handshaking
+    }
+
     if (length > 7) {
+        currDt++;
         uint8_t dat = r->current_data->shift();
+        dat = char_to_num(dat);
         AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": system %d"), dat);
+        switch (dat) {
+            case 0:
+                r->system_state = RECEIVER_CTRL_SYSTEM_STATE_OK;
+                break;
+            case 1:
+                r->system_state = RECEIVER_CTRL_SYSTEM_STATE_BUSY;
+                break;
+            case 2:
+                r->system_state = RECEIVER_CTRL_SYSTEM_STATE_STANDBY;
+                break;
+        }
     }
 
     if (length > 8) {
+        currDt++;
         uint8_t dat = r->current_data->shift();
+        dat = char_to_num(dat);
         AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": power %d"), dat);
-
+        switch (dat) {
+            case 0:
+                r->power_main = false;
+                r->power_zone_2 = false;
+                r->power_zone_3 = false;
+                break;
+            case 1:
+                r->power_main = true;
+                r->power_zone_2 = true;
+                r->power_zone_3 = true;
+                break;
+            case 2:
+                r->power_main = true;
+                r->power_zone_2 = false;
+                r->power_zone_3 = false;
+                break;
+            case 3:
+                r->power_main = false;
+                r->power_zone_2 = true;
+                r->power_zone_3 = true;
+                break;
+            case 4:
+                r->power_main = true;
+                r->power_zone_2 = true;
+                r->power_zone_3 = false;
+                break;
+            case 5:
+                r->power_main = true;
+                r->power_zone_2 = false;
+                r->power_zone_3 = true;
+                break;
+            case 6:
+                r->power_main = false;
+                r->power_zone_2 = true;
+                r->power_zone_3 = false;
+                break;
+            case 7:
+                r->power_main = false;
+                r->power_zone_2 = false;
+                r->power_zone_3 = true;
+                break;
+        }
     }
 
+    for (int i = currDt + 1; i < length; i++) {
+        if (r->current_data->size()) {
+            uint8_t dat = r->current_data->shift();
+            AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Got DT%d: %02x"), i, dat);
+        } else {
+            AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": DT%d: none"), i);
+        }
+    }
+    
+
+    
+
+    if (r->current_data->size()) {
     uint8_t curr = r->current_data->shift();
 
     while (curr != 0x03 && r->current_data->size() > 0) {
@@ -321,6 +434,7 @@ static void parseConfiguration() {
         }
     }
 
+    }
     AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Hier2"));
 
 }
