@@ -68,6 +68,7 @@ static struct receiver_ctrl_softc_s *receiver_ctrl_sc = nullptr;
 
 static void receiver_ctrl_update_mqtt(receiver_ctrl_softc_s *sc);
 static void send_system_command(receiver_ctrl_softc_s *sc,uint8_t cmd0, uint8_t cmd1, uint8_t dat0, uint8_t dat1);
+static void send_operation_command(receiver_ctrl_softc_s *sc,uint8_t cmd0, uint8_t cmd1, uint8_t cmd2, uint8_t cmd3);
 
 static uint8_t char_to_num(uint8_t c) {
     if (c >= 0x30 && c <= 0x39) {
@@ -222,6 +223,17 @@ static void send_init_command(void) {
     receiver_ctrl_sc->sc_serial_state = RECEIVER_CTRL_SERIAL_WAITING_FOR_CONFIG;
 }
 
+static void send_operation_command(receiver_ctrl_softc_s *sc,uint8_t cmd0, uint8_t cmd1, uint8_t cmd2, uint8_t cmd3) {
+    sc->sc_serial->write(0x02);
+    sc->sc_serial->write(0x30);
+    sc->sc_serial->write(num_to_char(cmd0));
+    sc->sc_serial->write(num_to_char(cmd1));
+    sc->sc_serial->write(num_to_char(cmd2));
+    sc->sc_serial->write(num_to_char(cmd3));
+    sc->sc_serial->write(0x03);
+    sc->sc_serial->flush();
+}
+
 static void send_system_command(receiver_ctrl_softc_s *sc,uint8_t cmd0, uint8_t cmd1, uint8_t dat0, uint8_t dat1) {
     sc->sc_serial->write(0x02);
     sc->sc_serial->write(0x32);
@@ -268,7 +280,7 @@ static void receiver_ctrl_loop(struct receiver_ctrl_softc_s *sc) {
             //AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Serial available"));
             while(sc->sc_serial->available()) {
                 int data = sc->sc_serial->read();
-                AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Got serial data %02x"), data);
+                //AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Got serial data %02x"), data);
                 sc->current_data->add(data);
             }
 
@@ -276,10 +288,10 @@ static void receiver_ctrl_loop(struct receiver_ctrl_softc_s *sc) {
             //AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Got no serial data"));
             unsigned long now = millis() - sc->last_packet;
 
-            if (now > 50000) {
-                // Received last packet more than 5 secounds ago
+            if (now > 300000) {
+                // Received last packet more than 300 secounds ago
                 // Enter NOT_INIT state
-                AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Got no packet for 50 seconds %d"), now);
+                AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Got no packet for 300 seconds %d"), now);
                 sc->sc_serial_state = RECEIVER_CTRL_SERIAL_NOT_INIT;
                 sc->init_retries = 0;
             }
@@ -424,13 +436,15 @@ static void parseConfiguration() {
     if (r->current_data->size()) {
     uint8_t curr = r->current_data->shift();
 
+    AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Got %d additional bytes"), r->current_data->size());
+
     while (curr != 0x03 && r->current_data->size() > 0) {
         AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Discarding %02x"), curr);
         if (r->current_data->size() > 0) {
-            AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Not Empty"));
+            //AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Not Empty"));
             curr = r->current_data->shift();
         } else {
-            AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Is Empty"));
+            //AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Is Empty"));
         }
     }
 
@@ -440,13 +454,37 @@ static void parseConfiguration() {
 }
 
 static void parseReport() {
+
     uint8_t start = receiver_ctrl_sc->current_data->shift();
+
+    if (receiver_ctrl_sc->current_data->size() < 7) {
+        AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Got too small Report"));
+        return ;
+    }
+
+    
 
     if (start != 0x02) {
         // Ibvalid start
         return ;
     }
+
+    uint8_t typ = receiver_ctrl_sc->current_data->shift();
+    uint8_t grd = receiver_ctrl_sc->current_data->shift();
+
+    uint32_t cmd = ascii_to_num(receiver_ctrl_sc->current_data,0,2);
+
+    uint8_t cmd0 = receiver_ctrl_sc->current_data->shift();
+    uint8_t cmd1 = receiver_ctrl_sc->current_data->shift();
+
+    uint8_t dat0 = receiver_ctrl_sc->current_data->shift();
+    uint8_t dat1 = receiver_ctrl_sc->current_data->shift();
+
+    AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Report Typ %02x Grd %02x Cmd %02x Dat %02x %02x"), typ, grd, cmd, dat0, dat1);
+
+    uint8_t end = receiver_ctrl_sc->current_data->shift();
 }
+
 
 static bool parsePaket() {
     //AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Parse Paket %d"), receiver_ctrl_sc->current_data->size());
@@ -566,6 +604,12 @@ bool receiver_ctrl_command(void) {
     if (!strcmp(ArgV(argument, 1), "STATUS")) {
         AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Got status command"));
         receiver_ctrl_update_mqtt(receiver_ctrl_sc);
+        return serviced;
+    }
+
+    if (!strcmp(ArgV(argument,1), "POWER")) {
+        AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Got power command"));
+        send_operation_command(receiver_ctrl_sc, 0x7, 0xA, 0x1, 0xE);
         return serviced;
     }
 
