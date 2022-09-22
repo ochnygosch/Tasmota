@@ -69,6 +69,7 @@ static struct receiver_ctrl_softc_s *receiver_ctrl_sc = nullptr;
 static void receiver_ctrl_update_mqtt(receiver_ctrl_softc_s *sc,bool send);
 static void send_system_command(receiver_ctrl_softc_s *sc,uint8_t cmd0, uint8_t cmd1, uint8_t dat0, uint8_t dat1);
 static void send_operation_command(receiver_ctrl_softc_s *sc,uint8_t cmd0, uint8_t cmd1, uint8_t cmd2, uint8_t cmd3);
+static void send_power_command(receiver_ctrl_softc_s *sc,uint8_t zone, bool power);
 
 static uint8_t char_to_num(uint8_t c) {
     if (c >= 0x30 && c <= 0x39) {
@@ -133,7 +134,7 @@ static void receiver_ctrl_pre_init(void) {
 
     sc->current_data = new LinkedList<uint8_t>();
 
-    sc->sc_serial_state == RECEIVER_CTRL_SERIAL_NOT_INIT;
+    sc->sc_serial_state = RECEIVER_CTRL_SERIAL_NOT_INIT;
 
     AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Creating Serial"));
     sc->sc_serial = new TasmotaSerial(Pin(GPIO_RECEIVER_CTRL_RX), Pin(GPIO_RECEIVER_CTRL_TX), 2);
@@ -182,7 +183,7 @@ static void receiver_ctrl_do_init(void) {
         // Max retries reached... timeout
         AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Config max retries reached"));
         receiver_ctrl_sc->sc_serial_state = RECEIVER_CTRL_SERIAL_TIMEOUT;
-        receiver_ctrl_sc->timeout_to_do = 10;
+        receiver_ctrl_sc->timeout_to_do = 60;
         receiver_ctrl_update_mqtt(receiver_ctrl_sc, true);
         return;
     }
@@ -197,6 +198,7 @@ static void receiver_ctrl_do_init(void) {
     AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Recorded last packet"));
 
     receiver_ctrl_sc->sc_serial_state = RECEIVER_CTRL_SERIAL_WAITING_FOR_CONFIG;
+    //receiver_ctrl_sc->sc_serial_state = RECEIVER_CTRL_SERIAL_INIT;
 
     return;
 }
@@ -223,7 +225,63 @@ static void send_init_command(void) {
     receiver_ctrl_sc->sc_serial_state = RECEIVER_CTRL_SERIAL_WAITING_FOR_CONFIG;
 }
 
+static void send_power_command(receiver_ctrl_softc_s *sc,uint8_t zone, bool power) {
+    if (power) {
+        bool reqDouble = !(sc->power_main || sc->power_zone_2 || sc->power_zone_3);
+        switch (zone)
+        {
+        case 0:
+            // ALL
+            send_operation_command(sc, 0x7, 0xA, 0x1, 0xD);
+            if (reqDouble) {
+                send_operation_command(sc, 0x7, 0xA, 0x1, 0xD);
+            }
+            break;
+        case 1:
+            send_operation_command(sc, 0x7, 0xE, 0x7, 0xE);
+            if (reqDouble) {
+                send_operation_command(sc, 0x7, 0xE, 0x7, 0xE);
+            }
+            break;
+        case 2:
+            send_operation_command(sc, 0x7, 0xE, 0xB, 0xA);
+            if (reqDouble) {
+                send_operation_command(sc, 0x7, 0xE, 0xB, 0xA);
+            }
+            break;
+        case 3:
+            send_operation_command(sc, 0x7, 0xA, 0xE, 0xD);
+            if (reqDouble) {
+                send_operation_command(sc, 0x7, 0xA, 0xE, 0xD);
+            }
+            break;
+        default:
+            break;
+        }
+    } else {
+        switch (zone)
+        {
+        case 0:
+            // ALL
+            send_operation_command(sc, 0x7, 0xA, 0x1, 0xE);
+            break;
+        case 1:
+            send_operation_command(sc, 0x7, 0xE, 0x7, 0xF);
+            break;
+        case 2:
+            send_operation_command(sc, 0x7, 0xE, 0xB, 0xB);
+            break;
+        case 3:
+            send_operation_command(sc, 0x7, 0xA, 0xE, 0xE);
+            break;
+        default:
+            break;
+        }
+    }
+}
+
 static void send_operation_command(receiver_ctrl_softc_s *sc,uint8_t cmd0, uint8_t cmd1, uint8_t cmd2, uint8_t cmd3) {
+    AddLog(LOG_LEVEL_DEBUG, PSTR(RECEIVER_CTRL_LOGNAME ": Send OP %01x %01x %01x %01x"), cmd0, cmd1, cmd2, cmd3);
     sc->sc_serial->write(0x02);
     sc->sc_serial->write(0x30);
     sc->sc_serial->write(num_to_char(cmd0));
@@ -280,7 +338,7 @@ static void receiver_ctrl_loop(struct receiver_ctrl_softc_s *sc) {
             //AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Serial available"));
             while(sc->sc_serial->available()) {
                 int data = sc->sc_serial->read();
-                //AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Got serial data %02x"), data);
+                AddLog(LOG_LEVEL_DEBUG, PSTR(RECEIVER_CTRL_LOGNAME ": Got serial data %02x"), data);
                 sc->current_data->add(data);
             }
 
@@ -523,6 +581,10 @@ static bool parsePaket() {
             }
         }
 
+        /*if (!end_found) {
+            AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Got no paket end"));
+        }*/
+
         if (end_found) {
             //AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Got paket end"));
             switch (curr_start) {
@@ -603,6 +665,14 @@ bool receiver_ctrl_command(void) {
 
     UpperCase(XdrvMailbox.data,XdrvMailbox.data);
 
+    if (!strcmp(ArgV(argument, 1), "RESET")) {
+        AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Got reset command"));
+        receiver_ctrl_sc->current_data->clear();
+        receiver_ctrl_sc->sc_serial->flush();
+        receiver_ctrl_sc->sc_serial_state = RECEIVER_CTRL_SERIAL_NOT_INIT;
+        return serviced;
+    }
+
     if (!strcmp(ArgV(argument, 1), "STATUS")) {
         AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Got status command"));
         receiver_ctrl_update_mqtt(receiver_ctrl_sc, false);
@@ -614,8 +684,10 @@ bool receiver_ctrl_command(void) {
             if (!strcmp(ArgV(argument, 2), "1")) {
                 if (!strcmp(ArgV(argument, 3), "ON")) {
                     AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Got main power on command"));
+                    send_power_command(receiver_ctrl_sc, 1, true);
                 } else {
                     AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Got main power off command"));
+                    send_power_command(receiver_ctrl_sc, 1, false);
                 }
             } else if (!strcmp(ArgV(argument, 2), "2")) {
                 if (!strcmp(ArgV(argument, 3), "ON")) {
@@ -637,10 +709,10 @@ bool receiver_ctrl_command(void) {
         } else if (paramcount > 1) {
             if (!strcmp(ArgV(argument, 2), "ON")) {
                 AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Got power on ALL command"));
-                send_operation_command(receiver_ctrl_sc, 0x7, 0xA, 0x1, 0xE);
+                send_power_command(receiver_ctrl_sc, 0, true);
             } else {
                 AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Got power off ALL command"));
-                send_operation_command(receiver_ctrl_sc, 0x7, 0xA, 0x1, 0xD);
+                send_power_command(receiver_ctrl_sc, 0, false);
             }
         }
         receiver_ctrl_update_mqtt(receiver_ctrl_sc, false);
