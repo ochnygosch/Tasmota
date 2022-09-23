@@ -109,6 +109,14 @@ static uint32_t ascii_to_num(LinkedList<uint8_t> *data,uint32_t start,uint32_t l
     return res;
 }
 
+static uint8_t ascii_to_num(uint8_t dat0, uint8_t dat1) {
+    uint8_t res = dat0;
+    res = res << 4;
+    res = res + dat1;
+
+    return res;
+}
+
 static void receiver_ctrl_pre_init(void) {
 
     
@@ -430,6 +438,8 @@ static void parseConfiguration() {
         }
     }
 
+
+
     if (length > 8) {
         currDt++;
         uint8_t dat = r->current_data->shift();
@@ -475,6 +485,65 @@ static void parseConfiguration() {
                 r->power_main = false;
                 r->power_zone_2 = false;
                 r->power_zone_3 = true;
+                break;
+        }
+    }
+
+    if (length > 9) {
+        currDt++;
+        uint8_t dat0 = r->current_data->shift();
+        uint8_t dat1 = r->current_data->shift();
+
+        uint8_t dat = ascii_to_num(dat0, dat1);
+
+        switch (dat) {
+            case 0x00:
+                r->input_main = RECEIVER_CTRL_SYSTEM_INPUT_PHONO;
+                break;
+            case 0x01:
+                r->input_main = RECEIVER_CTRL_SYSTEM_INPUT_CD;
+                break;
+            case 0x02:
+                r->input_main = RECEIVER_CTRL_SYSTEM_INPUT_TUNER;
+                break;
+            case 0x03:
+                r->input_main = RECEIVER_CTRL_SYSTEM_INPUT_CDR;
+                break;
+            case 0x04:
+                r->input_main = RECEIVER_CTRL_SYSTEM_INPUT_MD_TAPE;
+                break;
+            case 0x05:
+                r->input_main = RECEIVER_CTRL_SYSTEM_INPUT_DVD;
+                break;
+            case 0x06:
+                r->input_main = RECEIVER_CTRL_SYSTEM_INPUT_DTV;
+                break;
+            case 0x07:
+                r->input_main = RECEIVER_CTRL_SYSTEM_INPUT_CBL_SAT;
+                break;
+            case 0x08:
+                r->input_main = RECEIVER_CTRL_SYSTEM_INPUT_SAT;
+                break;
+            case 0x09:
+                r->input_main = RECEIVER_CTRL_SYSTEM_INPUT_VCR1;
+                break;
+            case 0xA:
+                r->input_main = RECEIVER_CTRL_SYSTEM_INPUT_DVR_VCR2;
+                break;
+            case 0x0B:
+                r->input_main = RECEIVER_CTRL_SYSTEM_INPUT_DVR_VCR3;
+                break;
+            case 0x0C:
+                r->input_main = RECEIVER_CTRL_SYSTEM_INPUT_VAUX_DOCK;
+                break;
+            case 0x0D:
+                r->input_main = RECEIVER_CTRL_SYSTEM_INPUT_NET_USB;
+                break;
+            case 0x0E:
+                r->input_main = RECEIVER_CTRL_SYSTEM_INPUT_XM;
+                break;
+            case 0x0F:
+                r->input_main = RECEIVER_CTRL_SYSTEM_INPUT_MULTI_CH;
                 break;
         }
     }
@@ -537,6 +606,114 @@ static void parseReport() {
 
     uint8_t dat0 = receiver_ctrl_sc->current_data->shift();
     uint8_t dat1 = receiver_ctrl_sc->current_data->shift();
+
+    uint8_t dat = ascii_to_num(dat0, dat1);
+    switch (cmd) {
+        case 0x20:
+            // Power
+            AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Report POWER %02x"), dat);
+            switch (dat) {
+                case 0x0:
+                    receiver_ctrl_sc->power_main = false;
+                    receiver_ctrl_sc->power_zone_2 = false;
+                    receiver_ctrl_sc->power_zone_3 = false;
+                    break;
+                case 0x1:
+                    receiver_ctrl_sc->power_main = true;
+                    receiver_ctrl_sc->power_zone_2 = true;
+                    receiver_ctrl_sc->power_zone_3 = true;
+                    break;
+                case 0x2:
+                    receiver_ctrl_sc->power_main = true;
+                    receiver_ctrl_sc->power_zone_2 = false;
+                    receiver_ctrl_sc->power_zone_3 = false;
+                    break;
+                case 0x3:
+                    receiver_ctrl_sc->power_main = false;
+                    receiver_ctrl_sc->power_zone_2 = true;
+                    receiver_ctrl_sc->power_zone_3 = true;
+                    break;
+                case 0x4:
+                    receiver_ctrl_sc->power_main = true;
+                    receiver_ctrl_sc->power_zone_2 = true;
+                    receiver_ctrl_sc->power_zone_3 = false;
+                    break;
+                case 0x5:
+                    receiver_ctrl_sc->power_main = true;
+                    receiver_ctrl_sc->power_zone_2 = false;
+                    receiver_ctrl_sc->power_zone_3 = true;
+                    break;
+                case 0x6:
+                    receiver_ctrl_sc->power_main = false;
+                    receiver_ctrl_sc->power_zone_2 = true;
+                    receiver_ctrl_sc->power_zone_3 = false;
+                    break;
+                case 0x7:
+                    receiver_ctrl_sc->power_main = false;
+                    receiver_ctrl_sc->power_zone_2 = false;
+                    receiver_ctrl_sc->power_zone_3 = true;
+                    break;
+            }
+            break;
+        case 0x21:
+            // Input
+            AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Report INPUT %02x"), dat);
+            switch (dat) {
+                case 0x00:
+                    receiver_ctrl_sc->input_main = RECEIVER_CTRL_SYSTEM_INPUT_PHONO;
+                    break;
+                case 0x01:
+                    receiver_ctrl_sc->input_main = RECEIVER_CTRL_SYSTEM_INPUT_CD;
+                    break;
+                case 0x02:
+                    receiver_ctrl_sc->input_main = RECEIVER_CTRL_SYSTEM_INPUT_TUNER;
+                    break;
+                case 0x03:
+                    receiver_ctrl_sc->input_main = RECEIVER_CTRL_SYSTEM_INPUT_CDR;
+                    break;
+                case 0x04:
+                    receiver_ctrl_sc->input_main = RECEIVER_CTRL_SYSTEM_INPUT_MD_TAPE;
+                    break;
+                case 0x05:
+                    receiver_ctrl_sc->input_main = RECEIVER_CTRL_SYSTEM_INPUT_DVD;
+                    break;
+                case 0x06:
+                    receiver_ctrl_sc->input_main = RECEIVER_CTRL_SYSTEM_INPUT_DTV;
+                    break;
+                case 0x07:
+                    receiver_ctrl_sc->input_main = RECEIVER_CTRL_SYSTEM_INPUT_CBL_SAT;
+                    break;
+                case 0x08:
+                    receiver_ctrl_sc->input_main = RECEIVER_CTRL_SYSTEM_INPUT_SAT;
+                    break;
+                case 0x09:
+                    receiver_ctrl_sc->input_main = RECEIVER_CTRL_SYSTEM_INPUT_VCR1;
+                    break;
+                case 0x0A:
+                    receiver_ctrl_sc->input_main = RECEIVER_CTRL_SYSTEM_INPUT_DVR_VCR2;
+                    break;
+                case 0x0B:
+                    receiver_ctrl_sc->input_main = RECEIVER_CTRL_SYSTEM_INPUT_DVR_VCR3;
+                    break;
+                case 0x0C:
+                    receiver_ctrl_sc->input_main = RECEIVER_CTRL_SYSTEM_INPUT_VAUX_DOCK;
+                    break;
+                case 0x0D:
+                    receiver_ctrl_sc->input_main = RECEIVER_CTRL_SYSTEM_INPUT_NET_USB;
+                    break;
+                case 0x0E:
+                    receiver_ctrl_sc->input_main = RECEIVER_CTRL_SYSTEM_INPUT_XM;
+                    break;
+                case 0x10:
+                    receiver_ctrl_sc->input_main = RECEIVER_CTRL_SYSTEM_INPUT_MULTI_CH;
+                    break;
+                
+            }
+            break;
+        default:
+            AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Report Typ %02x Grd %02x Cmd %02x Dat %02x %02x"), typ, grd, cmd, dat0, dat1);
+            break;
+    }
 
     AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Report Typ %02x Grd %02x Cmd %02x Dat %02x %02x"), typ, grd, cmd, dat0, dat1);
 
@@ -638,6 +815,7 @@ static void receiver_ctrl_update_mqtt(receiver_ctrl_softc_s *sc,bool send) {
         ResponseAppend_P(PSTR(",\"PowerMain\": %d"), sc->power_main);
         ResponseAppend_P(PSTR(",\"PowerZone2\": %d"), sc->power_zone_2);
         ResponseAppend_P(PSTR(",\"PowerZone3\": %d"), sc->power_zone_3);
+        ResponseAppend_P(PSTR(",\"InputMain\": %d"), sc->input_main);
     }
     ResponseJsonEnd();
     ResponseJsonEnd();
@@ -692,14 +870,18 @@ bool receiver_ctrl_command(void) {
             } else if (!strcmp(ArgV(argument, 2), "2")) {
                 if (!strcmp(ArgV(argument, 3), "ON")) {
                     AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Got zone 2 power on command"));
+                    send_power_command(receiver_ctrl_sc, 2, true);
                 } else {
                     AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Got zone 2 power off command"));
+                    send_power_command(receiver_ctrl_sc, 2, false);
                 }
             } else if (!strcmp(ArgV(argument, 2), "3")) {
                 if (!strcmp(ArgV(argument, 3), "ON")) {
                     AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Got zone 3 power on command"));
+                    send_power_command(receiver_ctrl_sc, 3, true);
                 } else {
-                    AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Got zone 3 power off command"));   
+                    AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Got zone 3 power off command"));
+                    send_power_command(receiver_ctrl_sc, 3, false);   
                 }
             } else {
                 AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Got unknown power command"));
