@@ -70,6 +70,8 @@ static void receiver_ctrl_update_mqtt(receiver_ctrl_softc_s *sc,bool send);
 static void send_system_command(receiver_ctrl_softc_s *sc,uint8_t cmd0, uint8_t cmd1, uint8_t dat0, uint8_t dat1);
 static void send_operation_command(receiver_ctrl_softc_s *sc,uint8_t cmd0, uint8_t cmd1, uint8_t cmd2, uint8_t cmd3);
 static void send_power_command(receiver_ctrl_softc_s *sc,uint8_t zone, bool power);
+static void send_input_main_command(receiver_ctrl_softc_s *sc,enum receiver_ctrl_system_input_e input);
+static void send_input_command(receiver_ctrl_softc_s *sc, uint8_t zone, enum receiver_ctrl_system_input_e input);
 
 static uint8_t char_to_num(uint8_t c) {
     if (c >= 0x30 && c <= 0x39) {
@@ -110,9 +112,9 @@ static uint32_t ascii_to_num(LinkedList<uint8_t> *data,uint32_t start,uint32_t l
 }
 
 static uint8_t ascii_to_num(uint8_t dat0, uint8_t dat1) {
-    uint8_t res = dat0;
+    uint8_t res = char_to_num(dat0);
     res = res << 4;
-    res = res + dat1;
+    res = res + char_to_num(dat1);
 
     return res;
 }
@@ -231,6 +233,62 @@ static void send_init_command(void) {
     receiver_ctrl_sc->sc_serial->flush();
 
     receiver_ctrl_sc->sc_serial_state = RECEIVER_CTRL_SERIAL_WAITING_FOR_CONFIG;
+}
+
+static void send_input_command(receiver_ctrl_softc_s *sc, uint8_t zone, enum receiver_ctrl_system_input_e input) {
+    switch (zone) {
+        case 1:
+            send_input_main_command(sc, input);
+            break;
+    }
+}
+
+static void send_input_main_command(receiver_ctrl_softc_s *sc,enum  receiver_ctrl_system_input_e input) {
+    switch (input)
+    {
+    case RECEIVER_CTRL_SYSTEM_INPUT_PHONO:
+        send_operation_command(sc, 0x7, 0xA, 0x1, 0x4);
+        /* code */
+        break;
+    case RECEIVER_CTRL_SYSTEM_INPUT_CD:
+        send_operation_command(sc, 0x7, 0xA, 0x1, 0x5);
+        break;
+    case RECEIVER_CTRL_SYSTEM_INPUT_TUNER:
+        send_operation_command(sc, 0x7, 0xA, 0x1, 0x6);
+        break;
+    case RECEIVER_CTRL_SYSTEM_INPUT_CDR:
+        send_operation_command(sc, 0x7, 0xA, 0x1, 0x9);
+        break;
+    case RECEIVER_CTRL_SYSTEM_INPUT_MD_TAPE:
+        send_operation_command(sc, 0x7, 0xA, 0x1, 0x8);
+        break;
+    case RECEIVER_CTRL_SYSTEM_INPUT_DVD:
+        send_operation_command(sc, 0x7, 0xA, 0xC, 0x1);
+        break;
+    case RECEIVER_CTRL_SYSTEM_INPUT_DTV:
+        send_operation_command(sc, 0x7, 0xA, 0x5, 0x4);
+        break;
+    case RECEIVER_CTRL_SYSTEM_INPUT_CBL_SAT:
+        send_operation_command(sc, 0x7, 0xA, 0xC, 0x0);
+        break;
+    case RECEIVER_CTRL_SYSTEM_INPUT_VCR1:
+        send_operation_command(sc, 0x7, 0xA, 0x0, 0xF);
+        break;
+    case RECEIVER_CTRL_SYSTEM_INPUT_DVR_VCR2:
+        send_operation_command(sc, 0x7, 0xA, 0x1, 0x3);
+        break;
+    case RECEIVER_CTRL_SYSTEM_INPUT_VAUX_DOCK:
+        send_operation_command(sc, 0x7, 0xA, 0x5, 0x5);
+        break;
+    case RECEIVER_CTRL_SYSTEM_INPUT_MULTI_CH:
+        send_operation_command(sc, 0x7, 0xA, 0x8, 0x7);
+        break;
+    case RECEIVER_CTRL_SYSTEM_INPUT_XM:
+        send_operation_command(sc, 0x7, 0xA, 0xB, 0x4);
+        break;
+    default:
+        break;
+    }
 }
 
 static void send_power_command(receiver_ctrl_softc_s *sc,uint8_t zone, bool power) {
@@ -494,8 +552,9 @@ static void parseConfiguration() {
         uint8_t dat0 = r->current_data->shift();
         uint8_t dat1 = r->current_data->shift();
 
-        uint8_t dat = ascii_to_num(dat0, dat1);
+        uint8_t dat = ascii_to_num(dat1, dat0);
 
+        AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": CFG Input %02x"), dat);
         switch (dat) {
             case 0x00:
                 r->input_main = RECEIVER_CTRL_SYSTEM_INPUT_PHONO;
@@ -551,9 +610,9 @@ static void parseConfiguration() {
     for (int i = currDt + 1; i < length; i++) {
         if (r->current_data->size()) {
             uint8_t dat = r->current_data->shift();
-            AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Got DT%d: %02x"), i, dat);
+            //AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Got DT%d: %02x"), i, dat);
         } else {
-            AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": DT%d: none"), i);
+            //AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": DT%d: none"), i);
         }
     }
     
@@ -563,7 +622,7 @@ static void parseConfiguration() {
     if (r->current_data->size()) {
     uint8_t curr = r->current_data->shift();
 
-    AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Got %d additional bytes"), r->current_data->size());
+    //AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Got %d additional bytes"), r->current_data->size());
 
     while (curr != 0x03 && r->current_data->size() > 0) {
         AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Discarding %02x"), curr);
@@ -855,6 +914,52 @@ bool receiver_ctrl_command(void) {
         AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Got status command"));
         receiver_ctrl_update_mqtt(receiver_ctrl_sc, false);
         return serviced;
+    }
+
+    if (!strcmp(ArgV(argument, 1), "INPUT")) {
+        uint8_t zone = 1;
+        if (paramcount > 2) {
+            if (!strcmp(ArgV(argument, 2), "2")) {
+                zone = 2;
+            } else if (!strcmp(ArgV(argument, 2), "3")) {
+                zone = 3;
+            }
+            
+
+            if (!strcmp(ArgV(argument, 3), "PHONO")) {
+                send_input_command(receiver_ctrl_sc, zone, RECEIVER_CTRL_SYSTEM_INPUT_PHONO);
+            } else if (!strcmp(ArgV(argument, 3), "CD")) {
+                send_input_command(receiver_ctrl_sc, zone, RECEIVER_CTRL_SYSTEM_INPUT_CD);
+            } else if(!strcmp(ArgV(argument, 3), "TUNER")) {
+                send_input_command(receiver_ctrl_sc, zone, RECEIVER_CTRL_SYSTEM_INPUT_TUNER);
+            } else if (!strcmp(ArgV(argument, 3), "CDR")) {
+                send_input_command(receiver_ctrl_sc, zone, RECEIVER_CTRL_SYSTEM_INPUT_CDR);
+            } else if (!strcmp(ArgV(argument, 3), "MD_TAPE")) {
+                send_input_command(receiver_ctrl_sc, zone, RECEIVER_CTRL_SYSTEM_INPUT_MD_TAPE);
+            } else if (!strcmp(ArgV(argument, 3), "DVD")) {
+                send_input_command(receiver_ctrl_sc, zone, RECEIVER_CTRL_SYSTEM_INPUT_DVD);
+            } else if (!strcmp(ArgV(argument, 3), "DTV")) {
+                send_input_command(receiver_ctrl_sc, zone, RECEIVER_CTRL_SYSTEM_INPUT_DTV);
+            } else if (!strcmp(ArgV(argument, 3), "CBL_SAT")) {
+                send_input_command(receiver_ctrl_sc, zone, RECEIVER_CTRL_SYSTEM_INPUT_CBL_SAT);
+            } else if (!strcmp(ArgV(argument, 3), "SAT")) {
+                send_input_command(receiver_ctrl_sc, zone, RECEIVER_CTRL_SYSTEM_INPUT_SAT);
+            } else if (!strcmp(ArgV(argument, 3), "VCR!")) {
+                send_input_command(receiver_ctrl_sc, zone, RECEIVER_CTRL_SYSTEM_INPUT_VCR1);
+            } else if (!strcmp(ArgV(argument, 3), "DVR_VCR2")) {
+                send_input_command(receiver_ctrl_sc, zone, RECEIVER_CTRL_SYSTEM_INPUT_DVR_VCR2);
+            } else if (!strcmp(ArgV(argument, 3), "DVR_VCR3")) {
+                send_input_command(receiver_ctrl_sc, zone, RECEIVER_CTRL_SYSTEM_INPUT_DVR_VCR3);
+            } else if (!strcmp(ArgV(argument, 3), "VAUX_DOCK")) {
+                send_input_command(receiver_ctrl_sc, zone, RECEIVER_CTRL_SYSTEM_INPUT_VAUX_DOCK);
+            } else if (!strcmp(ArgV(argument, 3), "NET_USB")) {
+                send_input_command(receiver_ctrl_sc, zone, RECEIVER_CTRL_SYSTEM_INPUT_NET_USB);
+            } else if (!strcmp(ArgV(argument, 3), "XM")) {
+                send_input_command(receiver_ctrl_sc, zone, RECEIVER_CTRL_SYSTEM_INPUT_XM);
+            } else if (!strcmp(ArgV(argument, 3), "MULTI_CH")) {
+                send_input_command(receiver_ctrl_sc, zone, RECEIVER_CTRL_SYSTEM_INPUT_MULTI_CH);
+            }
+        }
     }
 
     if (!strcmp(ArgV(argument,1), "POWER")) {
