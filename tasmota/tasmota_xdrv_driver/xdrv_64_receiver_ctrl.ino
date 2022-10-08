@@ -202,10 +202,15 @@ static void receiver_ctrl_do_init(void) {
 
     send_init_command();
 
-    AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Send init command"));
+#ifdef DEBUG_RECEIVER_CTRL
+    AddLog(LOG_LEVEL_DEBUG, PSTR(RECEIVER_CTRL_LOGNAME ": Send init command"));
+#endif
+
     receiver_ctrl_sc->last_packet = millis();
 
-    AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Recorded last packet"));
+#ifdef DEBUG_RECEIVER_CTRL
+    AddLog(LOG_LEVEL_DEBUG, PSTR(RECEIVER_CTRL_LOGNAME ": Recorded last packet"));
+#endif
 
     receiver_ctrl_sc->sc_serial_state = RECEIVER_CTRL_SERIAL_WAITING_FOR_CONFIG;
     //receiver_ctrl_sc->sc_serial_state = RECEIVER_CTRL_SERIAL_INIT;
@@ -218,8 +223,9 @@ static void send_init_command(void) {
     // TODO
     // Send init command 
     // Enter state waiting for config
-
-    AddLog(LOG_LEVEL_INFO,PSTR(RECEIVER_CTRL_LOGNAME ": Sending init command"));
+#ifdef DEBUG_RECEIVER_CTRL
+    AddLog(LOG_LEVEL_DEBUG,PSTR(RECEIVER_CTRL_LOGNAME ": Sending init command"));
+#endif
 
     receiver_ctrl_sc->sc_serial->write((uint8_t)0x11);
     receiver_ctrl_sc->sc_serial->flush();
@@ -347,7 +353,10 @@ static void send_power_command(receiver_ctrl_softc_s *sc,uint8_t zone, bool powe
 }
 
 static void send_operation_command(receiver_ctrl_softc_s *sc,uint8_t cmd0, uint8_t cmd1, uint8_t cmd2, uint8_t cmd3) {
+#ifdef DEBUG_RECEIVER_CTRL    
     AddLog(LOG_LEVEL_DEBUG, PSTR(RECEIVER_CTRL_LOGNAME ": Send OP %01x %01x %01x %01x"), cmd0, cmd1, cmd2, cmd3);
+#endif
+
     sc->sc_serial->write(0x02);
     sc->sc_serial->write(0x30);
     sc->sc_serial->write(num_to_char(cmd0));
@@ -404,7 +413,9 @@ static void receiver_ctrl_loop(struct receiver_ctrl_softc_s *sc) {
             //AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Serial available"));
             while(sc->sc_serial->available()) {
                 int data = sc->sc_serial->read();
+#ifdef DEBUG_RECEIVER_CTRL
                 AddLog(LOG_LEVEL_DEBUG, PSTR(RECEIVER_CTRL_LOGNAME ": Got serial data %02x"), data);
+#endif
                 sc->current_data->add(data);
             }
 
@@ -415,7 +426,9 @@ static void receiver_ctrl_loop(struct receiver_ctrl_softc_s *sc) {
             if (now > 300000) {
                 // Received last packet more than 300 secounds ago
                 // Enter NOT_INIT state
-                AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Got no packet for 300 seconds %d"), now);
+#ifdef DEBUG_RECEIVER_CTRL
+                AddLog(LOG_LEVEL_DEBUG, PSTR(RECEIVER_CTRL_LOGNAME ": Got no packet for 300 seconds %d"), now);
+#endif
                 sc->sc_serial_state = RECEIVER_CTRL_SERIAL_NOT_INIT;
                 sc->init_retries = 0;
             }
@@ -432,7 +445,9 @@ static void parseConfiguration() {
     uint8_t start = receiver_ctrl_sc->current_data->shift();
 
     if (start != 0x12) {
-        AddLog(LOG_LEVEL_INFO,PSTR(RECEIVER_CTRL_LOGNAME ": Parsing config paket"));
+#ifdef DEBUG_RECEIVER_CTRL
+        AddLog(LOG_LEVEL_DEBUG,PSTR(RECEIVER_CTRL_LOGNAME ": Parsing config paket"));
+#endif
         // Invalid start do nothing
         return ;
     }
@@ -447,9 +462,9 @@ static void parseConfiguration() {
     r->model[5] = 0;
 
     r->version = r->current_data->shift();
-
-    AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Got type %s"), r->model);
-
+#ifdef DEBUG_RECEIVER_CTRL
+    AddLog(LOG_LEVEL_DEBUG, PSTR(RECEIVER_CTRL_LOGNAME ": Got type %s"), r->model);
+#endif
     uint32_t length = ascii_to_num(r->current_data,0,2);
 
     char len[3];
@@ -457,7 +472,9 @@ static void parseConfiguration() {
     len[1] = r->current_data->shift();
     len[2] = 0;
 
-    AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Got length %d from %s"), length, len);
+#ifdef DEBUG_RECEIVER_CTRL
+    AddLog(LOG_LEVEL_DEBUG, PSTR(RECEIVER_CTRL_LOGNAME ": Got length %d from %s"), length, len);
+#endif
 
     int currDt = -1;
 
@@ -482,7 +499,10 @@ static void parseConfiguration() {
         currDt++;
         uint8_t dat = r->current_data->shift();
         dat = char_to_num(dat);
-        AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": system %d"), dat);
+#ifdef DEBUG_RECEIVER_CTRL
+        AddLog(LOG_LEVEL_DEBUG, PSTR(RECEIVER_CTRL_LOGNAME ": system %d"), dat);
+#endif
+
         switch (dat) {
             case 0:
                 r->system_state = RECEIVER_CTRL_SYSTEM_STATE_OK;
@@ -502,7 +522,9 @@ static void parseConfiguration() {
         currDt++;
         uint8_t dat = r->current_data->shift();
         dat = char_to_num(dat);
-        AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": power %d"), dat);
+#ifdef DEBUG_RECEIVER_CTRL
+        AddLog(LOG_LEVEL_DEBUG, PSTR(RECEIVER_CTRL_LOGNAME ": power %d"), dat);
+#endif        
         switch (dat) {
             case 0:
                 r->power_main = false;
@@ -553,8 +575,9 @@ static void parseConfiguration() {
         uint8_t dat1 = r->current_data->shift();
 
         uint8_t dat = ascii_to_num(dat1, dat0);
-
-        AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": CFG Input %02x"), dat);
+#ifdef DEBUG_RECEIVER_CTRL
+        AddLog(LOG_LEVEL_DEBUG, PSTR(RECEIVER_CTRL_LOGNAME ": CFG Input %02x"), dat);
+#endif
         switch (dat) {
             case 0x00:
                 r->input_main = RECEIVER_CTRL_SYSTEM_INPUT_PHONO;
@@ -625,7 +648,9 @@ static void parseConfiguration() {
     //AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Got %d additional bytes"), r->current_data->size());
 
     while (curr != 0x03 && r->current_data->size() > 0) {
-        AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Discarding %02x"), curr);
+#ifdef DEBUG_RECEIVER_CTRL        
+        AddLog(LOG_LEVEL_DEBUG, PSTR(RECEIVER_CTRL_LOGNAME ": Discarding %02x"), curr);
+#endif
         if (r->current_data->size() > 0) {
             //AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Not Empty"));
             curr = r->current_data->shift();
@@ -635,7 +660,7 @@ static void parseConfiguration() {
     }
 
     }
-    AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Hier2"));
+    //AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Hier2"));
 
 }
 
@@ -828,7 +853,7 @@ static bool parsePaket() {
                     parseConfiguration();
                     receiver_ctrl_sc->sc_serial_state = RECEIVER_CTRL_SERIAL_INIT;
                     receiver_ctrl_sc->last_packet = millis();
-                    AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Got parseConfig return"));
+                    //AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Got parseConfig return"));
                     //MqttShowSensor(false);
                     receiver_ctrl_update_mqtt(receiver_ctrl_sc, true);
                     break;
@@ -840,7 +865,7 @@ static bool parsePaket() {
                     break;
             }
         } else {
-            AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Got no paket end"));
+            //AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Got no paket end"));
         }
     }
 
@@ -1043,15 +1068,15 @@ bool Xdrv64(uint8_t function) {
         case FUNC_EVERY_SECOND:
             //AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Every second %d"), sc->sc_serial_state);
             if (sc->sc_serial_state == RECEIVER_CTRL_SERIAL_TIMEOUT) {
-                AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Handle Timeout"));
+                //AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Handle Timeout"));
                 handle_timeout();
             } else if (sc->sc_serial_state == RECEIVER_CTRL_SERIAL_NOT_INIT || sc->sc_serial_state == RECEIVER_CTRL_SERIAL_WAITING_FOR_CONFIG) {
-                AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Handle do init"));
+                //AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Handle do init"));
                 receiver_ctrl_do_init();
             } else if (sc->sc_serial_state == RECEIVER_CTRL_SERIAL_INIT) {
 
             } else {
-                AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Unknown state %d"), sc->sc_serial_state);
+                //AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Unknown state %d"), sc->sc_serial_state);
             }
             break;
         case FUNC_COMMAND_DRIVER:
