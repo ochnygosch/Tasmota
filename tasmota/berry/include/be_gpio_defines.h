@@ -187,6 +187,8 @@ const be_const_member_t lv_gpio_constants[] = {
     { "RDM6300_RX", (int32_t) GPIO_RDM6300_RX },
     { "RECEIVER_CTRL_RX", (int32_t) GPIO_RECEIVER_CTRL_RX },
     { "RECEIVER_CTRL_TX", (int32_t) GPIO_RECEIVER_CTRL_TX },
+    { "PROJECTOR_SIMPLE_CTRL_TX", (int32_t) GPIO_PROJECTOR_SIMPLE_CTRL_TX},
+    { "PROJECTOR_SIMPLE_CTRL_RX", (int32_t) GPIO_PROJECTOR_SIMPLE_CTRL_RX},
     { "REL1", (int32_t) GPIO_REL1 },
     { "REL1_INV", (int32_t) GPIO_REL1_INV },
     { "RESET", (int32_t) GPIO_RESET },

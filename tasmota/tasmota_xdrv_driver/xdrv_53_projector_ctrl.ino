@@ -28,7 +28,7 @@
 
 #define XDRV_53			53
 
-#if !defined(USE_PROJECTOR_CTRL_NEC) && !defined(USE_PROJECTOR_CTRL_OPTOMA) && !defined(USE_PROJECTOR_CTRL_ACER)
+#if !defined(USE_PROJECTOR_CTRL_NEC) && !defined(USE_PROJECTOR_CTRL_OPTOMA) && !defined(USE_PROJECTOR_CTRL_ACER) &&!defined(USE_PROJECTOR_CTRL_SONY_VPL_HW30)
 #define USE_PROJECTOR_CTRL_NEC                 // Use at least one projector
 #endif
 
@@ -70,6 +70,7 @@ struct projector_ctrl_command_info_s {
 	const uint8_t   fail_len;
 	const uint8_t   fail_value_offset;
 	const uint8_t   fail_value_bytes;
+	const uint8_t	send_num;
 } __packed;
 
 #include "include/xdrv_53_projector_ctrl.h"
@@ -112,7 +113,13 @@ projector_ctrl_pre_init(void)
 	sc->sc_serial = new TasmotaSerial(Pin(GPIO_PROJECTOR_CTRL_RX),
 	    Pin(GPIO_PROJECTOR_CTRL_TX), 2);
 
-	if (!sc->sc_serial->begin(baudrate)) {
+	uint32_t serial_config = SERIAL_8N1;
+
+#ifdef USE_PROJECTOR_CTRL_SONY_VPL_HW30
+	serial_config = SERIAL_8E1;
+#endif
+
+	if (!sc->sc_serial->begin(baudrate, serial_config)) {
 		AddLog(LOG_LEVEL_ERROR, PSTR(PROJECTOR_CTRL_LOGNAME ": unable to begin serial "
 		    "(baudrate %d)"), baudrate);
 		goto del;
@@ -120,7 +127,11 @@ projector_ctrl_pre_init(void)
 
 	if (sc->sc_serial->hardwareSerial()) {
 		ClaimSerial();
+#ifdef USE_PROJECTOR_CTRL_SONY_VPL_HW30
+		SetSerial(baudrate, TS_SERIAL_8E1);
+#else
 		SetSerial(baudrate, TS_SERIAL_8N1);
+#endif
 	}
 
 	sc->sc_device = ++(TasmotaGlobal.devices_present); /* claim a POWER device slot */
@@ -147,24 +158,45 @@ projector_ctrl_write(struct projector_ctrl_softc_s *sc, const uint8_t *bytes, co
 	cksum = 0;
 	serial = sc->sc_serial;
 
+#ifdef USE_PROJECTOR_CTRL_SONY_VPL_HW30
+	serial->write(0xA9);
+#endif
+
 	for (i = 0; i < len; i++) {
 		uint8_t b = bytes[i];
 		serial->write(b);
+#if  defined(USE_PROJECTOR_CTRL_SONY_VPL_HW30)
+		cksum = cksum | b;
+#else
 		cksum += b;
+#endif
 	}
-#ifdef USE_PROJECTOR_CTRL_NEC
+#if defined(USE_PROJECTOR_CTRL_NEC)
 	serial->write(cksum);
 #ifdef DEBUG_PROJECTOR_CTRL
 	char hex_b[(len + 1) * 2];
 	AddLog(LOG_LEVEL_DEBUG,PSTR(PROJECTOR_CTRL_LOGNAME ": RAW bytes %s %02x"),
 	    ToHex_P((uint8_t *)bytes, len, hex_b, sizeof(hex_b)), cksum);
 #endif //DEBUG_PROJECTOR_CTRL
+
+#elif defined(USE_PROJECTOR_CTRL_SONY_VPL_HW30)
+	serial->write(cksum);
+	serial->write(0x9A);
+
+#ifdef DEBUG_PROJECTOR_CTRL
+	char hex_b[(len + 1) * 2];
+	AddLog(LOG_LEVEL_DEBUG,PSTR(PROJECTOR_CTRL_LOGNAME ": RAW bytes 0xA9 %s %02x 0x9A"),
+	    ToHex_P((uint8_t *)bytes, len, hex_b, sizeof(hex_b)), cksum);
+#endif
+
 #else  //!USE_PROJECTOR_CTRL_NEC
+
 #ifdef DEBUG_PROJECTOR_CTRL
 	char hex_b[(len + 1) * 2];
 	AddLog(LOG_LEVEL_DEBUG,PSTR(PROJECTOR_CTRL_LOGNAME ": RAW bytes %s"),
 	    ToHex_P((uint8_t *)bytes, len, hex_b, sizeof(hex_b)));
 #endif //DEBUG_PROJECTOR_CTRL
+
 #endif //!USE_PROJECTOR_CTRL_NEC
 
 	serial->flush();
@@ -177,7 +209,7 @@ static void
 projector_ctrl_request(struct projector_ctrl_softc_s *sc, const uint8_t command)
 {
 	const struct projector_ctrl_command_info_s *e;
-	size_t i;
+	size_t i, j;
 
 	if ((sc->sc_dev_state!=PROJECTOR_CTRL_DEV_UNKNOWN)&&(sc->sc_ser_state!=PROJECTOR_CTRL_S_IDLE)) {
 		if ((command!=PROJECTOR_CTRL_S_QRY_PWR)&&(command!=PROJECTOR_CTRL_S_QRY_TYPE)) {
@@ -200,9 +232,11 @@ projector_ctrl_request(struct projector_ctrl_softc_s *sc, const uint8_t command)
 			sc->sc_ticks=0;
 #ifdef DEBUG_PROJECTOR_CTRL
 			AddLog(LOG_LEVEL_DEBUG, PSTR(PROJECTOR_CTRL_LOGNAME
-				": Sending CMD %02x"), command);
+				": Sending CMD %02x, %d times"), command, e->send_num);
 #endif //DEBUG_PROJECTOR_CTRL
-			projector_ctrl_write(sc,e->send_codes,e->send_len);
+			for (j = 0; j < e->send_num; j++) {
+				projector_ctrl_write(sc,e->send_codes,e->send_len);
+			}
 			return;
 		}
 	};
@@ -218,6 +252,10 @@ projector_ctrl_request(struct projector_ctrl_softc_s *sc, const uint8_t command)
 static uint8_t
 projector_ctrl_parse(struct projector_ctrl_softc_s *sc, const uint8_t byte)
 {
+#ifdef DEBUG_PROJECTOR_CTRL
+	AddLog(LOG_LEVEL_DEBUG, PSTR(PROJECTOR_CTRL_LOGNAME
+		": Got input: %02x"), byte);
+#endif //DEBUG_PROJECTOR_CTRL
 	enum projector_ctrl_serial_state_e nstate;
 	const struct projector_ctrl_command_info_s *cmd;
 

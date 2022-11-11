@@ -25,13 +25,13 @@ static const uint8_t projector_ctrl_msg_pwr_on[] = { 0x02, 0x00, 0x00, 0x00, 0x0
 static const uint8_t projector_ctrl_msg_pwr_off[] = { 0x02, 0x01, 0x00, 0x00, 0x00 };       //page16
 static const struct projector_ctrl_command_info_s projector_ctrl_commands[] = {
 	{PROJECTOR_CTRL_S_QRY_TYPE, &projector_ctrl_msg_qry_typ[0], sizeof(projector_ctrl_msg_qry_typ),
-								PROJECTOR_CTRL_SERIAL_TIMEOUT, 0x20, 22, 8, 4, 0xA0, 8, 5, 2},
+								PROJECTOR_CTRL_SERIAL_TIMEOUT, 0x20, 22, 8, 4, 0xA0, 8, 5, 2, 1},
 	{PROJECTOR_CTRL_S_QRY_PWR,  &projector_ctrl_msg_qry_pwr[0], sizeof(projector_ctrl_msg_qry_pwr),
-								PROJECTOR_CTRL_SERIAL_TIMEOUT, 0x20, 22, 6, 1, 0xA0, 8, 5, 2},
+								PROJECTOR_CTRL_SERIAL_TIMEOUT, 0x20, 22, 6, 1, 0xA0, 8, 5, 2, 1},
 	{PROJECTOR_CTRL_S_PWR_ON,   &projector_ctrl_msg_pwr_on[0], sizeof(projector_ctrl_msg_pwr_on),
-								PROJECTOR_CTRL_SERIAL_TIMEOUT, 0x22, 6, 0, 1, 0xA2, 8, 5, 2},
+								PROJECTOR_CTRL_SERIAL_TIMEOUT, 0x22, 6, 0, 1, 0xA2, 8, 5, 2, 1},
 	{PROJECTOR_CTRL_S_PWR_OFF,  &projector_ctrl_msg_pwr_off[0], sizeof(projector_ctrl_msg_pwr_off),
-								PROJECTOR_CTRL_SERIAL_TIMEOUT, 0x22, 6, 0, 1, 0xA2, 8, 5, 2}
+								PROJECTOR_CTRL_SERIAL_TIMEOUT, 0x22, 6, 0, 1, 0xA2, 8, 5, 2, 1}
 };
 #define PROJECTOR_CTRL_QRYPWR_ON      0x04
 #define PROJECTOR_CTRL_QRYPWR_COOLING 0x05
@@ -51,13 +51,13 @@ static const uint8_t projector_ctrl_msg_pwr_on[] = { 0x7e, 0x30, 0x30, 0x30, 0x3
 static const uint8_t projector_ctrl_msg_pwr_off[] = { 0x7e, 0x30, 0x30, 0x30, 0x30, 0x20, 0x30, 0x0d };       //page56
 static const struct projector_ctrl_command_info_s projector_ctrl_commands[] = {
 	{PROJECTOR_CTRL_S_QRY_TYPE, &projector_ctrl_msg_qry_typ[0], sizeof(projector_ctrl_msg_qry_typ),
-								PROJECTOR_CTRL_SERIAL_TIMEOUT, 'O', 6, 2, 4, 'I', 5, 4, 1},
+								PROJECTOR_CTRL_SERIAL_TIMEOUT, 'O', 6, 2, 4, 'I', 5, 4, 1, 1},
 	{PROJECTOR_CTRL_S_QRY_PWR,  &projector_ctrl_msg_qry_pwr[0], sizeof(projector_ctrl_msg_qry_pwr),
-								PROJECTOR_CTRL_SERIAL_TIMEOUT, 'O', 3, 2, 1, 'I', 5, 4, 1},
+								PROJECTOR_CTRL_SERIAL_TIMEOUT, 'O', 3, 2, 1, 'I', 5, 4, 1, 1},
 	{PROJECTOR_CTRL_S_PWR_ON,   &projector_ctrl_msg_pwr_on[0], sizeof(projector_ctrl_msg_pwr_on),
-								PROJECTOR_CTRL_SERIAL_TIMEOUT, 'P', 1, 0, 1, 'F', 1, 0, 1},
+								PROJECTOR_CTRL_SERIAL_TIMEOUT, 'P', 1, 0, 1, 'F', 1, 0, 1, 1},
 	{PROJECTOR_CTRL_S_PWR_OFF,  &projector_ctrl_msg_pwr_off[0], sizeof(projector_ctrl_msg_pwr_off),
-								PROJECTOR_CTRL_SERIAL_TIMEOUT, 'P', 1, 0, 1, 'F', 1, 0, 1}
+								PROJECTOR_CTRL_SERIAL_TIMEOUT, 'P', 1, 0, 1, 'F', 1, 0, 1, 1}
 };
 #define PROJECTOR_CTRL_QRYPWR_ON      0x31
 #define PROJECTOR_CTRL_QRYPWR_COOLING 0x31 //placebo
@@ -80,19 +80,42 @@ static const uint8_t projector_ctrl_msg_pwr_on[]  = { '*',' ','0',' ','I','R',' 
 static const uint8_t projector_ctrl_msg_pwr_off[] = { '*',' ','0',' ','I','R',' ','0','0','2', 0x0d }; //line19 - responds *000\r
 static const struct projector_ctrl_command_info_s projector_ctrl_commands[] = {
 	{PROJECTOR_CTRL_S_QRY_TYPE, &projector_ctrl_msg_qry_typ[0], sizeof(projector_ctrl_msg_qry_typ),
-								PROJECTOR_CTRL_SERIAL_TIMEOUT, '*', 12, 10, 1, '?', 1, 0, 1},
+								PROJECTOR_CTRL_SERIAL_TIMEOUT, '*', 12, 10, 1, '?', 1, 0, 1, 1},
 	{PROJECTOR_CTRL_S_QRY_PWR,  &projector_ctrl_msg_qry_pwr[0], sizeof(projector_ctrl_msg_qry_pwr),
-								PROJECTOR_CTRL_SERIAL_TIMEOUT, '*', 12, 10, 1, '?', 1, 0, 1},
+								PROJECTOR_CTRL_SERIAL_TIMEOUT, '*', 12, 10, 1, '?', 1, 0, 1, 1},
 	{PROJECTOR_CTRL_S_PWR_ON,   &projector_ctrl_msg_pwr_on[0], sizeof(projector_ctrl_msg_pwr_on),
-								PROJECTOR_CTRL_SERIAL_TIMEOUT, '*', 5, 0, 1, '?', 1, 0, 1},
+								PROJECTOR_CTRL_SERIAL_TIMEOUT, '*', 5, 0, 1, '?', 1, 0, 1, 1},
 	{PROJECTOR_CTRL_S_PWR_OFF,  &projector_ctrl_msg_pwr_off[0], sizeof(projector_ctrl_msg_pwr_off),
-								PROJECTOR_CTRL_SERIAL_TIMEOUT, '*', 5, 0, 1, '?', 1, 0, 1}
+								PROJECTOR_CTRL_SERIAL_TIMEOUT, '*', 5, 0, 1, '?', 1, 0, 1, 1}
 };
 #define PROJECTOR_CTRL_QRYPWR_ON      '1'
 #define PROJECTOR_CTRL_QRYPWR_COOLING '1'  //placebo
 #define PROJECTOR_CTRL_QRYPWR_STARTING '1' //placebo
 #define PROJECTOR_CTRL_QRYPWR_WARMING '1'  //placebo
 
+#elif defined(USE_PROJECTOR_CTRL_SONY_VPL_HW30)
+
+#define PROJECTOR_CTRL_LOGNAME "DLP[SONY]"
+
+static const uint8_t projector_ctrl_msg_qry_pwr[] = { 0x01, 0x02, 0x01, 0x00, 0x00 }; // Query Power status
+static const uint8_t projector_ctrl_msg_pwr_on[] = { 0x17, 0x2e, 0x00, 0x00, 0x00 };
+static const uint8_t projector_ctrl_msg_pwr_off[] = { 0x17, 0x2f, 0x00, 0x00, 0x00 };
+static const struct projector_ctrl_command_info_s projector_ctrl_commands[] = {
+	{PROJECTOR_CTRL_S_QRY_TYPE, &projector_ctrl_msg_qry_pwr[0], sizeof(projector_ctrl_msg_qry_pwr),
+		PROJECTOR_CTRL_SERIAL_TIMEOUT, 0xA9, 8, 4, 2, 0xA9, 8, 5, 2, 1},
+	{PROJECTOR_CTRL_S_QRY_PWR, &projector_ctrl_msg_qry_pwr[0], sizeof(projector_ctrl_msg_qry_pwr),
+		PROJECTOR_CTRL_SERIAL_TIMEOUT, 0xA9, 8, 4, 2, 0xA9, 8, 5, 2, 1},
+	{PROJECTOR_CTRL_S_PWR_ON, &projector_ctrl_msg_pwr_on[0], sizeof(projector_ctrl_msg_pwr_on),
+		PROJECTOR_CTRL_SERIAL_TIMEOUT, 0xA9, 8, 4, 2, 0xA9, 8, 5, 2, 2},
+	{PROJECTOR_CTRL_S_PWR_OFF, &projector_ctrl_msg_pwr_off[0], sizeof(projector_ctrl_msg_pwr_off),
+		PROJECTOR_CTRL_SERIAL_TIMEOUT, 0xA9, 8, 4, 2, 0xA9, 8, 5, 2, 1},
+
+};
+
+#define PROJECTOR_CTRL_QRYPWR_ON 0x0003
+#define PROJECTOR_CTRL_QRYPWR_COOLING 0x0004
+#define PROJECTOR_CTRL_QRYPWR_STARTING 0x0001
+#define PROJECTOR_CTRL_QRYPWR_WARMING 0x0002
 
 #else
 #error USE_PROJECTOR_CTRL: No projector type defined

@@ -196,6 +196,7 @@ enum UserSelectablePins {
   GPIO_I2S_MCLK,
   GPIO_MBR_TX, GPIO_MBR_RX,            // Modbus Bridge Serial interface
   GPIO_RECEIVER_CTRL_TX, GPIO_RECEIVER_CTRL_RX,  // Receiver controle serial interface
+  GPIO_PROJECTOR_SIMPLE_CTRL_TX, GPIO_PROJECTOR_SIMPLE_CTRL_RX, // Simple Projector ctrl
   GPIO_SENSOR_END };
 
 // Error as warning to rethink GPIO usage
@@ -440,6 +441,8 @@ const char kSensorNames[] PROGMEM =
   D_SENSOR_MBR_TX "|" D_SENSOR_MBR_RX "|"
   D_SENSOR_RECEIVER_CTRL_TX "|"
   D_SENSOR_RECEIVER_CTRL_RX "|"
+  D_SENSOR_PROJECTOR_SIMPLE_CTRL_TX "|"
+  D_SENSOR_PROJECTOR_SIMPLE_CTRL_RX "|"
   ;
 
 const char kSensorNamesFixed[] PROGMEM =
@@ -1012,6 +1015,10 @@ const uint16_t kGpioNiceList[] PROGMEM = {
 #ifdef USE_RECEIVER_CTRL
   AGPIO(GPIO_RECEIVER_CTRL_TX),
   AGPIO(GPIO_RECEIVER_CTRL_RX),
+#endif
+#ifdef USE_PROJECTOR_SIMPLE_CTRL
+  AGPIO(GPIO_PROJECTOR_SIMPLE_CTRL_TX),
+  AGPIO(GPIO_PROJECTOR_SIMPLE_CTRL_RX),
 #endif
 #if defined(USE_VL53L0X) or defined (USE_VL53L1X)
   AGPIO(GPIO_VL53LXX_XSHUT1) + VL53LXX_MAX_SENSORS,  // When using multiple VL53LXX.
