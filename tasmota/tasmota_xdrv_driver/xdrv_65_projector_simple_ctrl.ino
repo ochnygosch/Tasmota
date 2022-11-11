@@ -30,7 +30,8 @@ enum projector_simple_ctrl_cmd_state_e: uint8_t {
 };
 
 enum projector_simple_ctrl_power_state_e: uint8_t {
-    PROJECTOR_SIMPLE_CTRL_POWER_STATE_STANDBY=0,
+    PROJECTOR_SIMPLE_CTRL_POWER_STATE_UNKNOWN=0,
+    PROJECTOR_SIMPLE_CTRL_POWER_STATE_STANDBY,
     PROJECTOR_SIMPLE_CTRL_POWER_STATE_ON
 };
 
@@ -101,7 +102,8 @@ static void projector_simple_ctrl_pre_init(void) {
     st->current_data = new LinkedList<uint8_t>();
     st->commands = new LinkedList<projector_simple_ctrl_cmd_s *>();
     st->serial_state = PROJECTOR_SIMPLE_CTRL_SERIAL_STATE_NOT_INIT;
-
+    st->power_state = PROJECTOR_SIMPLE_CTRL_POWER_STATE_UNKNOWN;
+    
     #ifdef DEBUG_PROJECTOR_SIMPLE_CTRL
     AddLog(LOG_LEVEL_DEBUG, PSTR(PROJECTOR_SIMPLE_CTRL_LOGNAME ": Creating serial"));
     #endif
@@ -111,6 +113,11 @@ static void projector_simple_ctrl_pre_init(void) {
     if (!st->serial_port->begin(PROJECTOR_SIMPLE_CTRL_SERIAL_BAUDRATE)) {
         AddLog(LOG_LEVEL_ERROR, PSTR(PROJECTOR_SIMPLE_CTRL_LOGNAME ": unable to begin serial (baudrate %d)"), PROJECTOR_SIMPLE_CTRL_SERIAL_BAUDRATE);
         goto del;
+    }
+
+    if (st->serial_port->hardwareSerial()) {
+        ClaimSerial();
+        SetSerial(PROJECTOR_SIMPLE_CTRL_SERIAL_BAUDRATE,PROJECTOR_SIMPLE_CTRL_SERIAL_CONFIG);
     }
 
     projector_simple_ctrl_state = st;
@@ -157,8 +164,11 @@ static void projector_simple_ctrl_loop(struct projector_simple_ctrl_state_s *st)
                         AddLog(LOG_LEVEL_DEBUG, PSTR(PROJECTOR_SIMPLE_CTRL_LOGNAME ": Command %d timed out... discarding"), cmd->cmd);
                     #endif
                     st->serial_state = PROJECTOR_SIMPLE_CTRL_SERIAL_STATE_NOT_INIT;
+                    st->power_state = PROJECTOR_SIMPLE_CTRL_POWER_STATE_UNKNOWN;
+                    st->current_data->clear();
                     cmd = st->commands->pop();
                     free(cmd);
+                    projector_simple_ctrl_update_mqtt(st,true);
                 }
             }
         }
@@ -183,7 +193,18 @@ static void projector_simple_ctrl_send_command(struct projector_simple_ctrl_cmd_
             to_send[1] = 0x01;
             to_send[2] = 0x02;
             to_send[3] = 0x01;
-            break;        
+            break;
+        case PROJECTOR_SIMPLE_CTRL_CMD_SET_POWER_ON:
+            to_send[1] = 0x17;
+            to_send[2] = 0x2E;
+            to_send[3] = 0x00;
+            num_sends = 2;
+            break;
+        case PROJECTOR_SIMPLE_CTRL_CMD_SET_POWER_OFF:
+            to_send[1] = 0x17;
+            to_send[2] = 0x2F;
+            to_send[3] = 0x00;
+            break;
         default:
             AddLog(LOG_LEVEL_INFO, PSTR(PROJECTOR_SIMPLE_CTRL_LOGNAME ": Unknown command %d"), cmd->cmd);
             st->commands->shift();
@@ -227,6 +248,9 @@ static bool projector_simple_ctrl_tokenize_command(struct projector_simple_ctrl_
 
     #ifdef DEBUG_PROJECTOR_SIMPLE_CTRL
         AddLog(LOG_LEVEL_DEBUG, PSTR(PROJECTOR_SIMPLE_CTRL_LOGNAME ": Got paket start"));
+        for (int i = 0; i < st->current_data->size(); i++) {
+            AddLog(LOG_LEVEL_DEBUG, PSTR(PROJECTOR_SIMPLE_CTRL_LOGNAME ": Ser: %d %02x"), i, st->current_data->get(i));
+        }
     #endif
 
     if (st->current_data->size() < 8) {
@@ -275,6 +299,8 @@ static bool projector_simple_ctrl_tokenize_command(struct projector_simple_ctrl_
         st
     );
 
+    projector_simple_ctrl_update_mqtt(st, true);
+
 
     return true;
 }
@@ -316,7 +342,21 @@ static void projector_simple_ctrl_do_update(struct projector_simple_ctrl_state_s
 }
 
 static void projector_simple_ctrl_parse_command(uint8_t item0, uint8_t item1, uint8_t type, uint8_t data0, uint8_t data1, uint8_t checksum, struct projector_simple_ctrl_state_s *st) {
+    if (item0 == 0x01 && item1 == 0x02) {
+        #ifdef DEBUG_PROJECTOR_SIMPLE_CTRL
+            AddLog(LOG_LEVEL_DEBUG, PSTR(PROJECTOR_SIMPLE_CTRL_LOGNAME ": Got Status Power %02x%02x"), data0, data1);
+        #endif
 
+        switch (data1) {
+            case 0x00:
+            case 0x08:
+                st->power_state = PROJECTOR_SIMPLE_CTRL_POWER_STATE_STANDBY;
+                break;
+            default:
+                st->power_state = PROJECTOR_SIMPLE_CTRL_POWER_STATE_ON;
+                break;
+        }
+    }
 }
 
 static void projector_simple_ctrl_update_mqtt(struct projector_simple_ctrl_state_s *st, bool send) {
@@ -384,8 +424,15 @@ static bool projector_simple_ctrl_command(void) {
     }
 
     if (!strcmp(ArgV(argument, 1), "POWER")) {
+        AddLog(LOG_LEVEL_INFO, PSTR(PROJECTOR_SIMPLE_CTRL_LOGNAME ": Got power command"));
         if (paramcount > 1) {
+            #ifdef DEBUG_PROJECTOR_SIMPLE_CTRL
+                AddLog(LOG_LEVEL_DEBUG, PSTR(PROJECTOR_SIMPLE_CTRL_LOGNAME ": Before mallow"));
+            #endif
             cmd = (struct projector_simple_ctrl_cmd_s *)malloc(sizeof(*cmd));
+            #ifdef DEBUG_PROJECTOR_SIMPLE_CTRL
+                AddLog(LOG_LEVEL_DEBUG, PSTR(PROJECTOR_SIMPLE_CTRL_LOGNAME ": After malloc"));
+            #endif
             if (cmd != nullptr) {
                 cmd->state = PROJECTOR_SIMPLE_CTRL_CMD_STATE_PENDING;
                 if (!strcmp(ArgV(argument, 2), "ON")) {
@@ -406,7 +453,7 @@ static bool projector_simple_ctrl_command(void) {
         }
         
     }
-
+    return serviced;
 }
 
 bool Xdrv65(uint8_t function) {
