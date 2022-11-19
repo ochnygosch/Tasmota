@@ -6,7 +6,7 @@
 
 #ifdef USE_PROJECTOR_SIMPLE_CTRL_SONY_VPL_HW30
 #define PROJECTOR_SIMPLE_CTRL_SERIAL_BAUDRATE 38400
-#define PROJECTOR_SIMPLE_CTRL_SERIAL_CONFIG SERIAL_8E1
+#define PROJECTOR_SIMPLE_CTRL_SERIAL_CONFIG TS_SERIAL_8E1
 #define PROJECTOR_SIMPLE_CTRL_LOGNAME "PRJ[VWL30]"
 #endif
 
@@ -108,9 +108,9 @@ static void projector_simple_ctrl_pre_init(void) {
     AddLog(LOG_LEVEL_DEBUG, PSTR(PROJECTOR_SIMPLE_CTRL_LOGNAME ": Creating serial"));
     #endif
 
-    st->serial_port = new TasmotaSerial(Pin(GPIO_PROJECTOR_SIMPLE_CTRL_RX), Pin(GPIO_PROJECTOR_SIMPLE_CTRL_TX), PROJECTOR_SIMPLE_CTRL_SERIAL_CONFIG);
+    st->serial_port = new TasmotaSerial(Pin(GPIO_PROJECTOR_SIMPLE_CTRL_RX), Pin(GPIO_PROJECTOR_SIMPLE_CTRL_TX));
 
-    if (!st->serial_port->begin(PROJECTOR_SIMPLE_CTRL_SERIAL_BAUDRATE)) {
+    if (!st->serial_port->begin(PROJECTOR_SIMPLE_CTRL_SERIAL_BAUDRATE,SERIAL_8E1)) {
         AddLog(LOG_LEVEL_ERROR, PSTR(PROJECTOR_SIMPLE_CTRL_LOGNAME ": unable to begin serial (baudrate %d)"), PROJECTOR_SIMPLE_CTRL_SERIAL_BAUDRATE);
         goto del;
     }
@@ -242,7 +242,7 @@ static bool projector_simple_ctrl_tokenize_command(struct projector_simple_ctrl_
         AddLog(LOG_LEVEL_DEBUG, PSTR(PROJECTOR_SIMPLE_CTRL_LOGNAME ": Parsing commdn"));
     #endif
 
-    while (st->current_data->size() && st->current_data->get(0) == 0xA9) {
+    while (st->current_data->size() && st->current_data->get(0) != 0xA9) {
         st->current_data->shift();
     }
 
