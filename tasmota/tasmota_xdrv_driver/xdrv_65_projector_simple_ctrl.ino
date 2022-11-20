@@ -20,7 +20,11 @@ enum projector_simple_ctrl_cmd_e: uint8_t {
     PROJECTOR_SIMPLE_CTRL_CMD_GET_INPUT,
     PROJECTOR_SIMPLE_CTRL_CMD_GET_3D,
     PROJECTOR_SIMPLE_CTRL_CMD_SET_POWER_ON,
-    PROJECTOR_SIMPLE_CTRL_CMD_SET_POWER_OFF
+    PROJECTOR_SIMPLE_CTRL_CMD_SET_POWER_OFF,
+    PROJECTOR_SIMPLE_CTRL_CMD_SET_INPUT_A,
+    PROJECTOR_SIMPLE_CTRL_CMD_SET_INPUT_COMPONENT,
+    PROJECTOR_SIMPLE_CTRL_CMD_SET_INPUT_HDMI_1,
+    PROJECTOR_SIMPLE_CTRL_CMD_SET_INPUT_HDMI_2
 };
 
 enum projector_simple_ctrl_cmd_state_e: uint8_t {
@@ -204,6 +208,34 @@ static void projector_simple_ctrl_send_command(struct projector_simple_ctrl_cmd_
             to_send[1] = 0x17;
             to_send[2] = 0x2F;
             to_send[3] = 0x00;
+            break;
+        case PROJECTOR_SIMPLE_CTRL_CMD_SET_INPUT_A:
+            to_send[1] = 0x00;
+            to_send[2] = 0x01;
+            to_send[3] = 0x00;
+            to_send[4] = 0x00;
+            to_send[5] = 0x02;
+            break;
+        case PROJECTOR_SIMPLE_CTRL_CMD_SET_INPUT_COMPONENT:
+            to_send[1] = 0x00;
+            to_send[2] = 0x01;
+            to_send[3] = 0x00;
+            to_send[4] = 0x00;
+            to_send[5] = 0x03;
+            break;
+        case PROJECTOR_SIMPLE_CTRL_CMD_SET_INPUT_HDMI_1:
+            to_send[1] = 0x00;
+            to_send[2] = 0x01;
+            to_send[3] = 0x00;
+            to_send[4] = 0x00;
+            to_send[5] = 0x04;
+            break;
+        case PROJECTOR_SIMPLE_CTRL_CMD_SET_INPUT_HDMI_2:
+            to_send[1] = 0x00;
+            to_send[2] = 0x01;
+            to_send[3] = 0x00;
+            to_send[4] = 0x00;
+            to_send[5] = 0x05;
             break;
         default:
             AddLog(LOG_LEVEL_INFO, PSTR(PROJECTOR_SIMPLE_CTRL_LOGNAME ": Unknown command %d"), cmd->cmd);
@@ -451,7 +483,44 @@ static bool projector_simple_ctrl_command(void) {
                 AddLog(LOG_LEVEL_ERROR, PSTR(PROJECTOR_SIMPLE_CTRL_LOGNAME ": Could not allocate cmd"));
             }
         }
-        
+    } else if (!strcmp(ArgV(argument, 1), "INPUT")) {
+        AddLog(LOG_LEVEL_INFO, PSTR(PROJECTOR_SIMPLE_CTRL_LOGNAME ": Got input command"));
+        if (paramcount > 1) {
+            #ifdef DEBUG_PROJECTOR_SIMPLE_CTRL
+                AddLog(LOG_LEVEL_DEBUG, PSTR(PROJECTOR_SIMPLE_CTRL_LOGNAME ": Before malloc"));
+            #endif
+            cmd = (struct projector_simple_ctrl_cmd_s *)malloc(sizeof(*cmd));
+            #ifdef DEBUG_PROJECTOR_SIMPLE_CTRL
+                AddLog(LOG_LEVEL_DEBUG, PSTR(PROJECTOR_SIMPLE_CTRL_LOGNAME ": After malloc"));
+            #endif
+            if (cmd != nullptr) {
+                cmd->state = PROJECTOR_SIMPLE_CTRL_CMD_STATE_PENDING;
+                if (!strcmp(ArgV(argument, 2), "INPUT_A")) {
+                    #ifdef DEBUG_PROJECTOR_SIMPLE_CTRL
+                        AddLog(LOG_LEVEL_INFO, PSTR(PROJECTOR_SIMPLE_CTRL_LOGNAME ": INPUT_A"));
+                    #endif
+                    cmd->cmd = PROJECTOR_SIMPLE_CTRL_CMD_SET_INPUT_A;
+                } else if (!strcmp(ArgV(argument, 2), "COMPONENT")) {
+                    #ifdef DEBUG_PROJECTOR_SIMPLE_CTRL
+                        AddLog(LOG_LEVEL_INFO, PSTR(PROJECTOR_SIMPLE_CTRL_LOGNAME ": COMPONENT"));
+                    #endif
+                    cmd->cmd = PROJECTOR_SIMPLE_CTRL_CMD_SET_INPUT_COMPONENT;
+                } else if (!strcmp(ArgV(argument, 2), "HDMI_1")) {
+                    #ifdef DEBUG_PROJECTOR_SIMPLE_CTRL
+                        AddLog(LOG_LEVEL_INFO, PSTR(PROJECTOR_SIMPLE_CTRL_LOGNAME ": HDMI_1"));
+                    #endif
+                    cmd->cmd = PROJECTOR_SIMPLE_CTRL_CMD_SET_INPUT_HDMI_1;
+                } else if (!strcmp(ArgV(argument, 2), "HDMI_2")) {
+                    #ifdef DEBUG_PROJECTOR_SIMPLE_CTRL
+                        AddLog(LOG_LEVEL_INFO, PSTR(PROJECTOR_SIMPLE_CTRL_LOGNAME ": HDMI_2"));
+                    #endif
+                    cmd->cmd = PROJECTOR_SIMPLE_CTRL_CMD_SET_INPUT_HDMI_2;
+                }
+                st->commands->add(cmd);
+            } else {
+                AddLog(LOG_LEVEL_ERROR, PSTR(PROJECTOR_SIMPLE_CTRL_LOGNAME ": Could not allocate commdn"));
+            }
+        }
     }
     return serviced;
 }
