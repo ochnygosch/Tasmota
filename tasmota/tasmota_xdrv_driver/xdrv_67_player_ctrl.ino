@@ -229,7 +229,7 @@ static void player_ctrl_update_mqtt(struct player_ctrl_softc_s *st, bool send) {
     ResponseJsonEnd();
 
     if (send) {
-        MqttPublishPrefixTopicRulesProcess_P(RESULT_OR_STAT, PSTR("PLYR"));
+        MqttPublishPrefixTopicRulesProcess_P(STAT, PSTR("PLYR"));
     }
 }
 

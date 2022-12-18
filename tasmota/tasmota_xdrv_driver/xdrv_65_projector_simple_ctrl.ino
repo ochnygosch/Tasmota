@@ -402,7 +402,7 @@ static void projector_simple_ctrl_update_mqtt(struct projector_simple_ctrl_state
     ResponseJsonEnd();
 
     if (send) {
-        MqttPublishPrefixTopicRulesProcess_P(RESULT_OR_STAT, PSTR("PRJ"));
+        MqttPublishPrefixTopicRulesProcess_P(STAT, PSTR("PRJ"));
     }
 }
 

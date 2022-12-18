@@ -904,7 +904,7 @@ static void receiver_ctrl_update_mqtt(receiver_ctrl_softc_s *sc,bool send) {
     ResponseJsonEnd();
     ResponseJsonEnd();
     if (send) {
-        MqttPublishPrefixTopicRulesProcess_P(RESULT_OR_STAT, PSTR("RCV"));
+        MqttPublishPrefixTopicRulesProcess_P(STAT, PSTR("RCV"));
     }
 }
 
