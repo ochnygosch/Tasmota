@@ -44,6 +44,9 @@ static void player_ctrl_loop(struct player_ctrl_softc_s *st);
 static bool player_ctrl_command(void);
 static void player_ctrl_send_init_command(struct player_ctrl_softc_s *st);
 static void player_ctrl_send_power_command(bool on, struct player_ctrl_softc_s *st);
+static void player_ctrl_send_eject_toggle_command(struct player_ctrl_softc_s *st);
+static void player_ctrl_send_play_command(struct player_ctrl_softc_s *st);
+static void player_ctrl_send_pause_command(struct player_ctrl_softc_s *st);
 static void player_ctrl_set_verbose_mode(struct player_ctrl_softc_s *st);
 static bool player_ctrl_compare_cmd(char *cmd1, char *cmd2);
 
@@ -480,6 +483,30 @@ static bool player_ctrl_command(void) {
                 player_ctrl_send_power_command(false, st);
             }
         }
+    } else if (!strcmp(ArgV(argument,1), "EJECT")) {
+        #ifdef DEBUG_PLAYER_CTRL
+            AddLog(LOG_LEVEL_INFO, PSTR(PLAYER_CTRL_LOGNAME ": Got eject command"));
+        #endif
+        if (paramcount > 1) {
+        } else {
+            player_ctrl_send_eject_toggle_command(st);
+        }
+    } else if (!strcmp(ArgV(argument,1), "PLAY")) {
+        #ifdef DEBUG_PLAYER_CTRL
+            AddLog(LOG_LEVEL_INFO, PSTR(PLAYER_CTRL_LOGNAME ": Got play command"));
+        #endif
+        if (paramcount > 1) {
+        } else {
+            player_ctrl_send_play_command(st);
+        }
+    } else if (!strcmp(ArgV(argument,1), "PAUSE")) {
+        #ifdef DEBUG_PLAYER_CTRL
+            AddLog(LOG_LEVEL_INFO, PSTR(PLAYER_CTRL_LOGNAME ": Got Pause command"));
+        #endif
+        if (paramcount > 1) {
+        } else {
+            player_ctrl_send_pause_command(st);
+        }
     }
 
     player_ctrl_update_mqtt(st, false);
@@ -523,6 +550,50 @@ static void player_ctrl_send_power_command(bool on, struct player_ctrl_softc_s *
     } else {
         st->serial->write('F');
     }
+
+    st->serial->write(0x0D);
+    st->serial->flush();
+}
+
+static void player_ctrl_send_eject_toggle_command(struct player_ctrl_softc_s *st) {
+    #ifdef DEBUG_PLAYER_CTRL
+        AddLog(LOG_LEVEL_DEBUG, PSTR(PLAYER_CTRL_LOGNAME ": Sending eject toggle command"));
+    #endif
+
+    st->serial->write('#');
+
+    st->serial->write('E');
+    st->serial->write('J');
+    st->serial->write('T');
+
+    st->serial->write(0x0D);
+    st->serial->flush();
+}
+
+static void player_ctrl_send_play_command(struct player_ctrl_softc_s *st) {
+    #ifdef DEBUG_PLAYER_CTRL
+        AddLog(LOG_LEVEL_DEBUG, PSTR(PLAYER_CTRL_LOGNAME ": Sending eject toggle command"));
+    #endif
+
+    st->serial->write('#');
+
+    st->serial->write('P');
+    st->serial->write('L');
+    st->serial->write('A');
+
+    st->serial->write(0x0D);
+    st->serial->flush();
+}
+static void player_ctrl_send_pause_command(struct player_ctrl_softc_s *st) {
+    #ifdef DEBUG_PLAYER_CTRL
+        AddLog(LOG_LEVEL_DEBUG, PSTR(PLAYER_CTRL_LOGNAME ": Sending eject toggle command"));
+    #endif
+
+    st->serial->write('#');
+
+    st->serial->write('P');
+    st->serial->write('A');
+    st->serial->write('U');
 
     st->serial->write(0x0D);
     st->serial->flush();
