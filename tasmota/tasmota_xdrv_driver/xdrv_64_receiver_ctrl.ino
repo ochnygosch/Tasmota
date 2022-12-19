@@ -61,6 +61,8 @@ struct receiver_ctrl_softc_s {
     bool power_zone_2;
     bool power_zone_3;
     enum receiver_ctrl_system_input_e input_main;
+    uint8_t main_volume;
+    uint8_t zone2_volume;
 } __packed;
 
 
@@ -571,6 +573,7 @@ static void parseConfiguration() {
 
     if (length > 9) {
         currDt++;
+        currDt++;
         uint8_t dat0 = r->current_data->shift();
         uint8_t dat1 = r->current_data->shift();
 
@@ -628,6 +631,54 @@ static void parseConfiguration() {
                 r->input_main = RECEIVER_CTRL_SYSTEM_INPUT_MULTI_CH;
                 break;
         }
+    }
+
+    if (length > 11) {
+        // Audio Select
+        currDt++;
+        uint8_t dat = r->current_data->shift();
+
+    }
+
+    if (length > 12) {
+        // Audio Mute
+        currDt++;
+        uint8_t dat = r->current_data->shift();
+    }
+
+    if (length > 13) {
+        // Zone 2 Input
+        currDt++;
+        uint8_t dat = r->current_data->shift();
+    }
+
+    if (length > 14) {
+        // Zone 2 Mute
+        currDt++;
+        uint8_t dat = r->current_data->shift();
+    }
+
+    if (length > 16) {
+        // Master Volume
+        currDt++;
+        currDt++;
+        uint8_t dat0 = r->current_data->shift();
+        uint8_t dat1 = r->current_data->shift();
+
+        uint8_t dat = ascii_to_num(dat1, dat0);
+        r->main_volume = dat;
+
+    }
+
+    if (length > 18) {
+        // Zone 2 Volume
+        currDt++;
+        currDt++;
+
+        uint8_t dat0 = r->current_data->shift();
+        uint8_t dat1 = r->current_data->shift();
+        uint8_t dat = ascii_to_num(dat1, dat0);
+        r->zone2_volume = dat;
     }
 
     for (int i = currDt + 1; i < length; i++) {
@@ -900,6 +951,8 @@ static void receiver_ctrl_update_mqtt(receiver_ctrl_softc_s *sc,bool send) {
         ResponseAppend_P(PSTR(",\"PowerZone2\": %d"), sc->power_zone_2);
         ResponseAppend_P(PSTR(",\"PowerZone3\": %d"), sc->power_zone_3);
         ResponseAppend_P(PSTR(",\"InputMain\": %d"), sc->input_main);
+        ResponseAppend_P(PSTR(",\"MainVolume\": %d"), sc->main_volume);
+        ResponseAppend_P(PSTR(",\"Zone2Volume\": %d"), sc->zone2_volume);
     }
     ResponseJsonEnd();
     ResponseJsonEnd();
