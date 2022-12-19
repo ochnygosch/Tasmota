@@ -74,6 +74,7 @@ static void send_operation_command(receiver_ctrl_softc_s *sc,uint8_t cmd0, uint8
 static void send_power_command(receiver_ctrl_softc_s *sc,uint8_t zone, bool power);
 static void send_input_main_command(receiver_ctrl_softc_s *sc,enum receiver_ctrl_system_input_e input);
 static void send_input_command(receiver_ctrl_softc_s *sc, uint8_t zone, enum receiver_ctrl_system_input_e input);
+static void send_volume_command(receiver_ctrl_softc_s *st, uint8_t zone, bool up);
 
 static uint8_t char_to_num(uint8_t c) {
     if (c >= 0x30 && c <= 0x39) {
@@ -298,6 +299,35 @@ static void send_input_main_command(receiver_ctrl_softc_s *sc,enum  receiver_ctr
         break;
     }
 }
+
+static void send_volume_command(receiver_ctrl_softc_s *st, uint8_t zone, bool up) {
+    switch (zone) {
+        case 1:
+            if (up) {
+                send_operation_command(st, 0x7, 0xA, 0x1, 0xA);
+            } else {
+                send_operation_command(st, 0x7, 0xA, 0x1, 0xB);
+            }
+            break;
+        case 2:
+            if (up) {
+                send_operation_command(st, 0x7, 0xA, 0xD, 0xA);
+            } else {
+                send_operation_command(st, 0x7, 0xA, 0xD, 0xB);
+            }
+            break;
+        case 3:
+            if (up) {
+                send_operation_command(st, 0x7, 0xA, 0xF, 0xD);
+            } else {
+                send_operation_command(st, 0x7, 0xA, 0xF, 0xE);
+            }
+            break;
+        default:
+            break;
+    }
+}
+
 
 static void send_power_command(receiver_ctrl_softc_s *sc,uint8_t zone, bool power) {
     if (power) {
@@ -746,7 +776,9 @@ static void parseReport() {
     switch (cmd) {
         case 0x20:
             // Power
-            AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Report POWER %02x"), dat);
+            #ifdef DEBUG_RECEIVER_CTRL
+                AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Report POWER %02x"), dat);
+            #endif
             switch (dat) {
                 case 0x0:
                     receiver_ctrl_sc->power_main = false;
@@ -792,7 +824,9 @@ static void parseReport() {
             break;
         case 0x21:
             // Input
-            AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Report INPUT %02x"), dat);
+            #ifdef DEBUG_RECEIVER_CTRL
+                AddLog(LOG_LEVEL_DEBUG, PSTR(RECEIVER_CTRL_LOGNAME ": Report INPUT %02x"), dat);
+            #endif
             switch (dat) {
                 case 0x00:
                     receiver_ctrl_sc->input_main = RECEIVER_CTRL_SYSTEM_INPUT_PHONO;
@@ -845,12 +879,19 @@ static void parseReport() {
                 
             }
             break;
+        case 0x26:
+            // Main Volume
+            #ifdef DEBUG_RECEIVER_CTRL
+                AddLog(LOG_LEVEL_DEBUG, PSTR(RECEIVER_CTRL_LOGNAME ": Got MainVolume report. Dat: %d"), dat);
+            #endif
+            receiver_ctrl_sc->main_volume = dat;
+            break;
         default:
             AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Report Typ %02x Grd %02x Cmd %02x Dat %02x %02x"), typ, grd, cmd, dat0, dat1);
             break;
     }
 
-    AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Report Typ %02x Grd %02x Cmd %02x Dat %02x %02x"), typ, grd, cmd, dat0, dat1);
+    //AddLog(LOG_LEVEL_INFO, PSTR(RECEIVER_CTRL_LOGNAME ": Report Typ %02x Grd %02x Cmd %02x Dat %02x %02x"), typ, grd, cmd, dat0, dat1);
 
     uint8_t end = receiver_ctrl_sc->current_data->shift();
 }
@@ -1038,6 +1079,32 @@ bool receiver_ctrl_command(void) {
                 send_input_command(receiver_ctrl_sc, zone, RECEIVER_CTRL_SYSTEM_INPUT_MULTI_CH);
             }
         }
+        return serviced;
+    }
+
+    if (!strcmp(ArgV(argument, 1), "VOLUME")) {
+        #ifdef DEBUG_RECEIVER_CTRL
+        AddLog(LOG_LEVEL_DEBUG, PSTR(RECEIVER_CTRL_LOGNAME ": Got volume command"));
+        #endif 
+        if (paramcount > 2) {
+            if (!strcmp(ArgV(argument, 2), "1")) {
+                #ifdef DEBUG_RECEIVER_CTRL
+                    AddLog(LOG_LEVEL_DEBUG, PSTR(RECEIVER_CTRL_LOGNAME ": Got main volume command"));
+                #endif 
+                if (!strcmp(ArgV(argument, 3), "UP")) {
+                    #ifdef DEBUG_RECEIVER_CTRL
+                        AddLog(LOG_LEVEL_DEBUG,PSTR(RECEIVER_CTRL_LOGNAME ": Got main volume up command"));
+                    #endif
+                    send_volume_command(receiver_ctrl_sc, 1, true);
+                } else if (!strcmp(ArgV(argument, 3), "DOWN")) {
+                    #ifdef DEBUG_RECEIVER_CTRL
+                        AddLog(LOG_LEVEL_DEBUG,PSTR(RECEIVER_CTRL_LOGNAME ": Got main volume down command"));
+                    #endif
+                    send_volume_command(receiver_ctrl_sc, 1, false);
+                }
+            }
+        }
+        return serviced;
     }
 
     if (!strcmp(ArgV(argument,1), "POWER")) {
@@ -1083,8 +1150,8 @@ bool receiver_ctrl_command(void) {
         receiver_ctrl_update_mqtt(receiver_ctrl_sc, false);
         return serviced;
     }
-
-    return serviced;
+    
+    return false;
 }
 
 bool Xdrv64(uint8_t function) {

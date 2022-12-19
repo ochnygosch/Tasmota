@@ -194,7 +194,7 @@ static void hdmi_switch_ctrl_update_mqtt(struct hdmi_switch_ctrl_state_s *st,boo
     ResponseJsonEnd();
 
     if (send) {
-        MqttPublishPrefixTopicRulesProcess_P(RESULT_OR_STAT, PSTR("HDMI"));
+        MqttPublishPrefixTopicRulesProcess_P(STAT, PSTR("HDMI"));
     }
 }
 
