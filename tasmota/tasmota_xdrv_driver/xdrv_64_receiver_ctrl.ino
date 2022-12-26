@@ -75,6 +75,7 @@ static void send_power_command(receiver_ctrl_softc_s *sc,uint8_t zone, bool powe
 static void send_input_main_command(receiver_ctrl_softc_s *sc,enum receiver_ctrl_system_input_e input);
 static void send_input_command(receiver_ctrl_softc_s *sc, uint8_t zone, enum receiver_ctrl_system_input_e input);
 static void send_volume_command(receiver_ctrl_softc_s *st, uint8_t zone, bool up);
+static void send_volume_set_command(receiver_ctrl_softc_s *st, uint8_t zone, uint8_t volume);
 
 static uint8_t char_to_num(uint8_t c) {
     if (c >= 0x30 && c <= 0x39) {
@@ -322,6 +323,22 @@ static void send_volume_command(receiver_ctrl_softc_s *st, uint8_t zone, bool up
             } else {
                 send_operation_command(st, 0x7, 0xA, 0xF, 0xE);
             }
+            break;
+        default:
+            break;
+    }
+}
+
+static void send_volume_set_command(receiver_ctrl_softc_s *st, uint8_t zone, uint8_t volume) {
+    switch (zone) {
+        case 1:
+            send_system_command(st, 0x3, 0x0, volume >> 4, volume & 0xE);
+            break;
+        case 2:
+            send_system_command(st, 0x3, 0x1, volume >> 4, volume & 0xE);
+            break;
+        case 3:
+            send_system_command(st, 0x3, 0x4, volume >> 4, volume & 0xE);
             break;
         default:
             break;
@@ -695,7 +712,7 @@ static void parseConfiguration() {
         uint8_t dat0 = r->current_data->shift();
         uint8_t dat1 = r->current_data->shift();
 
-        uint8_t dat = ascii_to_num(dat1, dat0);
+        uint8_t dat = ascii_to_num(dat0, dat1);
         r->main_volume = dat;
 
     }
@@ -707,7 +724,7 @@ static void parseConfiguration() {
 
         uint8_t dat0 = r->current_data->shift();
         uint8_t dat1 = r->current_data->shift();
-        uint8_t dat = ascii_to_num(dat1, dat0);
+        uint8_t dat = ascii_to_num(dat0, dat1);
         r->zone2_volume = dat;
     }
 
@@ -1101,6 +1118,18 @@ bool receiver_ctrl_command(void) {
                         AddLog(LOG_LEVEL_DEBUG,PSTR(RECEIVER_CTRL_LOGNAME ": Got main volume down command"));
                     #endif
                     send_volume_command(receiver_ctrl_sc, 1, false);
+                } else if (!strcmp(ArgV(argument, 3), "SET")) {
+                    if (paramcount > 3) {
+                        ArgV(argument, 4);
+                        char *ptr;
+                        unsigned long vol = strtoul(argument,&ptr, 10);
+                        #ifdef DEBUG_RECEIVER_CTRL
+                            AddLog(LOG_LEVEL_DEBUG, PSTR(RECEIVER_CTRL_LOGNAME ": Got volume set command zone 1: %d"), vol);
+                        #endif
+                        send_volume_set_command(receiver_ctrl_sc, 1, vol);
+                    } else {
+                        AddLog(LOG_LEVEL_ERROR, PSTR(RECEIVER_CTRL_LOGNAME ": Got volume set command but not enough parameters"));
+                    }
                 }
             }
         }
