@@ -47,6 +47,7 @@ static void player_ctrl_send_power_command(bool on, struct player_ctrl_softc_s *
 static void player_ctrl_send_eject_toggle_command(struct player_ctrl_softc_s *st);
 static void player_ctrl_send_play_command(struct player_ctrl_softc_s *st);
 static void player_ctrl_send_pause_command(struct player_ctrl_softc_s *st);
+static void player_ctrl_send_std_command(byte cmd1, byte cmd2, byte cmd3, struct player_ctrl_softc_s *st);
 static void player_ctrl_set_verbose_mode(struct player_ctrl_softc_s *st);
 static bool player_ctrl_compare_cmd(char *cmd1, char *cmd2);
 
@@ -508,6 +509,150 @@ static bool player_ctrl_command(void) {
         } else {
             player_ctrl_send_pause_command(st);
         }
+    } else if (!strcmp(ArgV(argument, 1), "TOP_MENU")) {
+        #ifdef DEBUG_PLAYER_CTRL
+            AddLog(LOG_LEVEL_INFO, PSTR(PLAYER_CTRL_LOGNAME ": Got Top Menu command"));
+        #endif
+        if (paramcount > 1) {
+
+        } else {
+            player_ctrl_send_std_command('T','T','L', st);
+        }
+    } else if (!strcmp(ArgV(argument, 1), "POP_UP_MENU")) {
+        #ifdef DEBUG_PLAYER_CTRL
+            AddLog(LOG_LEVEL_INFO, PSTR(PLAYER_CTRL_LOGNAME ": Got PopUp Menu command"));
+        #endif
+        if (paramcount > 1) {
+
+        } else {
+            player_ctrl_send_std_command('M','N','U', st);
+        }
+    } else if (!strcmp(ArgV(argument, 1), "UP")) {
+        #ifdef DEBUG_PLAYER_CTRL
+            AddLog(LOG_LEVEL_INFO, PSTR(PLAYER_CTRL_LOGNAME ": Got Up command"));
+        #endif
+        if (paramcount > 1) {
+
+        } else {
+            player_ctrl_send_std_command('N','U','P', st);
+        }
+    } else if (!strcmp(ArgV(argument, 1), "LEFT")) {
+        #ifdef DEBUG_PLAYER_CTRL
+            AddLog(LOG_LEVEL_INFO, PSTR(PLAYER_CTRL_LOGNAME ": Got Left command"));
+        #endif
+        if (paramcount > 1) {
+
+        } else {
+            player_ctrl_send_std_command('N','L','T', st);
+        }
+    } else if (!strcmp(ArgV(argument, 1), "RIGHT")) {
+        #ifdef DEBUG_PLAYER_CTRL
+            AddLog(LOG_LEVEL_INFO, PSTR(PLAYER_CTRL_LOGNAME ": Got Right command"));
+        #endif
+        if (paramcount > 1) {
+
+        } else {
+            player_ctrl_send_std_command('N','R','T', st);
+        }
+    } else if (!strcmp(ArgV(argument, 1), "DOWN")) {
+        #ifdef DEBUG_PLAYER_CTRL
+            AddLog(LOG_LEVEL_INFO, PSTR(PLAYER_CTRL_LOGNAME ": Got Down command"));
+        #endif
+        if (paramcount > 1) {
+
+        } else {
+            player_ctrl_send_std_command('N','D','N', st);
+        }
+    } else if (!strcmp(ArgV(argument, 1), "ENTER")) {
+        #ifdef DEBUG_PLAYER_CTRL
+            AddLog(LOG_LEVEL_INFO, PSTR(PLAYER_CTRL_LOGNAME ": Got Enter command"));
+        #endif
+        if (paramcount > 1) {
+
+        } else {
+            player_ctrl_send_std_command('S','E','L', st);
+        }
+    } else if (!strcmp(ArgV(argument, 1), "RETURN")) {
+        #ifdef DEBUG_PLAYER_CTRL
+            AddLog(LOG_LEVEL_INFO, PSTR(PLAYER_CTRL_LOGNAME ": Got Return command"));
+        #endif
+        if (paramcount > 1) {
+
+        } else {
+            player_ctrl_send_std_command('R','E','T', st);
+        }
+    } else if (!strcmp(ArgV(argument, 1), "AUDIO")) {
+        #ifdef DEBUG_PLAYER_CTRL
+            AddLog(LOG_LEVEL_INFO, PSTR(PLAYER_CTRL_LOGNAME ": Got Audio command"));
+        #endif
+        if (paramcount > 1) {
+
+        } else {
+            player_ctrl_send_std_command('A','U','D', st);
+        }
+    } else if (!strcmp(ArgV(argument, 1), "SUBTITLE")) {
+        #ifdef DEBUG_PLAYER_CTRL
+            AddLog(LOG_LEVEL_INFO, PSTR(PLAYER_CTRL_LOGNAME ": Got Subtitle command"));
+        #endif
+        if (paramcount > 1) {
+
+        } else {
+            player_ctrl_send_std_command('S','U','B', st);
+        }
+    } else if (!strcmp(ArgV(argument, 1), "ANGLE")) {
+        #ifdef DEBUG_PLAYER_CTRL
+            AddLog(LOG_LEVEL_INFO, PSTR(PLAYER_CTRL_LOGNAME ": Got Angle command"));
+        #endif
+        if (paramcount > 1) {
+
+        } else {
+            player_ctrl_send_std_command('A','N','G', st);
+        }
+    } else if (!strcmp(ArgV(argument, 1), "ZOOM")) {
+        #ifdef DEBUG_PLAYER_CTRL
+            AddLog(LOG_LEVEL_INFO, PSTR(PLAYER_CTRL_LOGNAME ": Got Zoom command"));
+        #endif
+        if (paramcount > 1) {
+
+        } else {
+            player_ctrl_send_std_command('Z','O','M', st);
+        }
+    } else if (!strcmp(ArgV(argument, 1), "RESOLUTION")) {
+        #ifdef DEBUG_PLAYER_CTRL
+            AddLog(LOG_LEVEL_INFO, PSTR(PLAYER_CTRL_LOGNAME ": Got Resolution command"));
+        #endif
+        if (paramcount > 1) {
+
+        } else {
+            player_ctrl_send_std_command('H','D','M', st);
+        }
+    } else if (!strcmp(ArgV(argument, 1), "OPTION")) {
+        #ifdef DEBUG_PLAYER_CTRL
+            AddLog(LOG_LEVEL_INFO, PSTR(PLAYER_CTRL_LOGNAME ": Got Option command"));
+        #endif
+        if (paramcount > 1) {
+
+        } else {
+            player_ctrl_send_std_command('O','P','T', st);
+        }
+    } else if (!strcmp(ArgV(argument, 1), "3D")) {
+        #ifdef DEBUG_PLAYER_CTRL
+            AddLog(LOG_LEVEL_INFO, PSTR(PLAYER_CTRL_LOGNAME ": Got 3D command"));
+        #endif
+        if (paramcount > 1) {
+
+        } else {
+            player_ctrl_send_std_command('M','3','D', st);
+        }
+    } else if (!strcmp(ArgV(argument, 1), "HOME")) {
+        #ifdef DEBUG_PLAYER_CTRL
+            AddLog(LOG_LEVEL_INFO, PSTR(PLAYER_CTRL_LOGNAME ": Got Home command"));
+        #endif
+        if (paramcount > 1) {
+
+        } else {
+            player_ctrl_send_std_command('H','O','M', st);
+        }
     }
 
     player_ctrl_update_mqtt(st, false);
@@ -585,6 +730,21 @@ static void player_ctrl_send_play_command(struct player_ctrl_softc_s *st) {
     st->serial->write(0x0D);
     st->serial->flush();
 }
+
+static void player_ctrl_send_std_command(byte cmd1, byte cmd2, byte cmd3, struct player_ctrl_softc_s *st) {
+    #ifdef DEBUG_PLAYER_CTRL
+        AddLog(LOG_LEVEL_DEBUG, PSTR(PLAYER_CTRL_LOGNAME ": Sending std command " cmd1 cmd2 cmd3));
+    #endif
+
+    st->serial->write('#');
+    st->serial->write(cmd1);
+    st->serial->write(cmd2);
+    st->serial->write(cmd3);
+
+    st->serial->write(0x0D);
+    st->serial->flush();
+}
+
 static void player_ctrl_send_pause_command(struct player_ctrl_softc_s *st) {
     #ifdef DEBUG_PLAYER_CTRL
         AddLog(LOG_LEVEL_DEBUG, PSTR(PLAYER_CTRL_LOGNAME ": Sending eject toggle command"));
